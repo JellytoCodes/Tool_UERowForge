@@ -1,0 +1,16 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+# Preserve shipped batch files byte-for-byte (already CRLF).
+*.bat -text
+*.ps1 text eol=crlf
+*.png binary
+*.xlsx binary
+
+# Preserve historical fixture bytes: ownership hashes depend on them.
+tests/fixtures/** -text

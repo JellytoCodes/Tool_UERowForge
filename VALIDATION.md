@@ -1,5 +1,7 @@
 # UE TableDesk 0.2.2 검증 기록
 
+> 이 문서는 원본 v0.2.2 배포 시점의 검증 기록입니다. 저장소 정리 후 재실행 결과는 [2026-10-10 검증](docs/validation/2026-10-10-repository.md)을 참고하세요.
+
 검증 환경: Linux 컨테이너, Python 3.13.5, Tk 8.6, Xvfb 가상 디스플레이. 검증일: 2026-10-07.
 **실제 Unreal Engine 설치 및 Windows 실행 환경은 사용하지 않았습니다.**
 

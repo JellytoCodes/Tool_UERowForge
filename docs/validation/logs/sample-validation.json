@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "tables": [
+    {
+      "name": "Players",
+      "rows": 3,
+      "valid": true,
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "MaxHP",
+          "type": "Int"
+        },
+        {
+          "name": "MoveSpeed",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "rows": 3,
+      "valid": true,
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "Weight",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ]
+    }
+  ],
+  "issues": []
+}

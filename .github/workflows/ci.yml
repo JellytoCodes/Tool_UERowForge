@@ -1,0 +1,55 @@
+name: Python checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.13']
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests (not Unreal compilation)
+        run: python -m unittest discover -s tests -v
+      - name: Validate sample workbook
+        run: python main.py --validate examples/TableTemplate.xlsx
+      - name: Compile Python sources
+        run: python -m compileall -q main.py tabledesk tests scripts
+
+  gui-smoke:
+    name: Linux Tk GUI smoke (not Windows / Unreal)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install display and system Tk
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+      - name: Exercise the UI
+        run: xvfb-run -a /usr/bin/python3 scripts/gui_smoke.py
