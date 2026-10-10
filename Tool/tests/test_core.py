@@ -6,10 +6,10 @@ import tempfile
 import unittest
 from unittest import mock
 
-from tabledesk.core import (Field, MARKER, Project, Registry, Table, ToolError, build_plan,
+from uerowforge.core import (Field, MARKER, Project, Registry, Table, ToolError, build_plan,
     cell_name, execute_plan, header_blocks, inside, load_tables, merge_header, parse_sheet,
     register_project, relative_dir, scoped)
-from tabledesk.xlsx_reader import Sheet, SpecialCell, WorkbookError, read_xlsx
+from uerowforge.xlsx_reader import Sheet, SpecialCell, WorkbookError, read_xlsx
 
 SAMPLE = Path(__file__).resolve().parents[1] / "resources" / "TableTemplate.xlsx"
 
@@ -327,7 +327,7 @@ class ConversionTests(unittest.TestCase):
         self.assertTrue((self.root / "DataTable/Items.json").is_file())
 
     def test_rollback_on_write_failure(self):
-        from tabledesk import core
+        from uerowforge import core
         plan = build_plan(self.project, self.tables)
         real_write = core.atomic_write
         count = 0
@@ -338,7 +338,7 @@ class ConversionTests(unittest.TestCase):
                 if count == 2:
                     raise OSError("simulated disk error")
             return real_write(path, data)
-        with mock.patch("tabledesk.core.atomic_write", side_effect=failing):
+        with mock.patch("uerowforge.core.atomic_write", side_effect=failing):
             with self.assertRaises(ToolError):
                 execute_plan(plan)
         self.assertFalse((self.root / self.project.header_relative).exists())
@@ -431,17 +431,17 @@ class AdditionalIntegrityTests(unittest.TestCase):
             self.assertFalse((project.root / project.header_relative).exists())
 
     def test_ooxml_escaped_literal_and_emoji(self):
-        from tabledesk.xlsx_reader import _xml, _text
+        from uerowforge.xlsx_reader import _xml, _text
         text = _xml(b'<si xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><t>_x005F_x0041_ _xD83D__xDE00_</t></si>')
         self.assertEqual(_text(text), '_x0041_ \U0001f600')
 
     def test_phonetic_guide_not_in_string(self):
-        from tabledesk.xlsx_reader import _xml, _text
+        from uerowforge.xlsx_reader import _xml, _text
         text = _xml('<si xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><r><t>東京</t></r><rPh sb="0" eb="2"><t>とうきょう</t></rPh></si>'.encode())
         self.assertEqual(_text(text), '東京')
 
     def test_xml_entities_rejected(self):
-        from tabledesk.xlsx_reader import _xml
+        from uerowforge.xlsx_reader import _xml
         with self.assertRaises(WorkbookError):
             _xml(b'<!DOCTYPE a [<!ENTITY b "value">]><a>&b;</a>')
 

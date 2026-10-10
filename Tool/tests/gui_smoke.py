@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tabledesk.gui import App
-from tabledesk.core import Registry, build_plan, execute_plan
+from uerowforge.gui import App
+from uerowforge.core import Registry, build_plan, execute_plan
 
 
 def descendants(widget):
@@ -38,10 +38,11 @@ def main():
         root = tk.Tk()
         app = App(root, registry)
         errors = []
-        with patch('tabledesk.gui.messagebox.showerror', side_effect=lambda *a, **k: errors.append(a)), \
-             patch('tabledesk.gui.messagebox.showinfo', return_value=None):
+        with patch('uerowforge.gui.messagebox.showerror', side_effect=lambda *a, **k: errors.append(a)), \
+             patch('uerowforge.gui.messagebox.showinfo', return_value=None):
             root.update()
-            with patch('tabledesk.gui.open_path') as open_help:
+            assert root.title().startswith("UERowForge · "), root.title()
+            with patch('uerowforge.gui.open_path') as open_help:
                 click(root, "사용 설명서")
                 open_help.assert_called_once_with(ROOT.parent / "README.md")
             app.demo()
@@ -52,7 +53,7 @@ def main():
             root.update()
             assert not app.busy, "Excel load did not finish"
             exported = Path(tmp) / "template export.xlsx"
-            with patch('tabledesk.gui.filedialog.asksaveasfilename', return_value=str(exported)):
+            with patch('uerowforge.gui.filedialog.asksaveasfilename', return_value=str(exported)):
                 app.save_template()
             assert exported.read_bytes() == (ROOT / "resources/TableTemplate.xlsx").read_bytes()
             assert len(app.tables) == 2
@@ -97,7 +98,7 @@ def main():
             root.update()
             before_documents = dict(app.code_panel.documents)
             assert not (app.project.root / "DataTable").exists(), "Preview must not write files"
-            with patch('tabledesk.gui.build_project_code_preview', side_effect=AssertionError("Selection must not rebuild code")):
+            with patch('uerowforge.gui.build_project_code_preview', side_effect=AssertionError("Selection must not rebuild code")):
                 for index in ("0", "1"):
                     app.table_tree.selection_set(index)
                     app.table_tree.focus(index)
@@ -240,7 +241,7 @@ def main():
             root.update()
             assert not app.busy and not errors, errors
             assert app.project.sources == [str(ROOT / "resources/TableTemplate.xlsx")]
-            shot_dir = os.environ.get("TABLEDESK_SCREENSHOTS")
+            shot_dir = os.environ.get("UEROWFORGE_SCREENSHOTS") or os.environ.get("TABLEDESK_SCREENSHOTS")
             if shot_dir:
                 from PIL import ImageGrab
                 shot_dir = Path(shot_dir)

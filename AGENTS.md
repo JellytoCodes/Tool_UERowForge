@@ -1,10 +1,17 @@
-# UE TableDesk 개발 규칙
+# UERowForge 개발 규칙
 
 `README.md`와 작업할 코드·테스트를 읽는다. 현재 앱은 v0.2.2, 생성기 리비전은 3이다.
 **문서는 README.md와 이 파일 두 개만 관리한다.** 사용법/현황/다음 작업은 README, 개발 제약은 여기 둔다.
 별도 명세·로드맵·결정 기록·CHANGELOG·검증 보고서·절차/템플릿 문서를 임의로 만들지 않는다. 이력은 Git, 세부 작업은 실제 Issue/PR에 남긴다.
 
 ## 고정 설계
+
+제품·저장소·배포 이름은 **UERowForge**, Python 패키지는 `Tool/uerowforge`다.
+`UDataTableSubsystem`과 기존 C++ 생성 규칙은 제품명을 따라 바꾸지 않는다.
+기존 생성물/INI/잠금의 `TABLEDESK`, `UETableDesk.DataTables`, `.tabledesk-manifest.json`, `Saved/TableDesk`는 호환 식별자다.
+현재 명칭 변경은 generator revision 3과 출력 바이트를 유지한다. 이를 바꾸려면 별도 이관 작업으로 다룬다.
+기본 설정은 `UERowForge`에 저장하고 최초 실행 시 유효한 구버전 설정만 원본을 보존한 채 복사한다.
+`UEROWFORGE_HOME` 우선, `TABLEDESK_HOME` 호환 지원. 사용자가 지정한 별도 설정 위치는 자동 이관하지 않는다.
 
 - Python + Tkinter 공용 앱. 기본 실행은 표준 라이브러리만 사용한다. 새 의존성·프레임워크는 승인 없이 추가하지 않는다.
 - 프로젝트 루트는 연결 후 고정한다. 출력은 허용 기준 폴더 안의 상대 경로만 받는다.
@@ -33,7 +40,7 @@
 
 ## 현재 동작과 다음 변경
 
-**현재 일반 변환은 INI를 쓰지 않는다.** `Tool/tabledesk/runtime_registration.py`의 등록은 `Tool/tabledesk/unreal_runner.py`에서 에셋 전체 저장 성공 후 수행한다.
+**현재 일반 변환은 INI를 쓰지 않는다.** `Tool/uerowforge/runtime_registration.py`의 등록은 `Tool/uerowforge/unreal_runner.py`에서 에셋 전체 저장 성공 후 수행한다.
 **TD-001(사전 예정 경로 등록)은 미구현**이다. 이를 구현하지 않고 문서만 완료로 바꾸지 않는다.
 
 TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 에셋 준비 상태와 분리하는 작업이다.
@@ -47,10 +54,10 @@ TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 
 
 | 위치 | 역할 |
 |---|---|
-| `Tool/main.py`, `Tool/tabledesk/gui.py` | 진입점·UI |
-| `Tool/tabledesk/xlsx_reader.py`, `Tool/tabledesk/core.py` | 엑셀 읽기·검증·경로·코드/JSON 계획·manifest·파일 보호 |
-| `Tool/tabledesk/subsystem_codegen.py`, `Tool/tabledesk/code_preview.py` | Subsystem 생성·전체 코드 미리보기 |
-| `Tool/tabledesk/runtime_registration.py`, `Tool/tabledesk/unreal_runner.py`, `Tool/tabledesk/unreal_bridge.py` | INI 등록·외부 UE 실행·엔진 내부 에셋 작업 |
+| `Tool/main.py`, `Tool/uerowforge/gui.py` | 진입점·UI |
+| `Tool/uerowforge/xlsx_reader.py`, `Tool/uerowforge/core.py` | 엑셀 읽기·검증·경로·코드/JSON 계획·manifest·파일 보호 |
+| `Tool/uerowforge/subsystem_codegen.py`, `Tool/uerowforge/code_preview.py` | Subsystem 생성·전체 코드 미리보기 |
+| `Tool/uerowforge/runtime_registration.py`, `Tool/uerowforge/unreal_runner.py`, `Tool/uerowforge/unreal_bridge.py` | INI 등록·외부 UE 실행·엔진 내부 에셋 작업 |
 | `Tool/tests/`, `Tool/tests/gui_smoke.py` | 회귀 테스트·GUI 테스트 |
 
 `Tool/tests/fixtures/v020`은 원본 v0.2.0 생성물을 보존한 이관 입력이다. 현재 생성 예시로 수정하거나 게임에 복사하지 않는다.

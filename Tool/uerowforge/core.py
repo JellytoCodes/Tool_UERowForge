@@ -18,7 +18,8 @@ import uuid
 from .xlsx_reader import Sheet, SpecialCell, read_xlsx
 from .subsystem_codegen import SUBSYSTEM_MARKER, subsystem_header, subsystem_source
 
-APP_ID = "UETableDesk"
+APP_ID = "UERowForge"
+# Persistent file/INI identifiers stay unchanged to keep existing projects usable.
 MARKER = "// UE TABLEDESK - MANAGED HEADER v1"
 MANIFEST = ".tabledesk-manifest.json"
 DEFAULT_HEADER_SUBDIR = "Data"
@@ -56,7 +57,7 @@ def json_text(value: object) -> str:
 
 
 def app_dir() -> Path:
-    override = os.environ.get("TABLEDESK_HOME")
+    override = os.environ.get("UEROWFORGE_HOME") or os.environ.get("TABLEDESK_HOME")
     if override:
         return Path(override).expanduser().resolve()
     root = Path(os.environ.get("LOCALAPPDATA", Path.home() / ".local" / "share"))
@@ -220,13 +221,25 @@ class Registry:
     def __init__(self, home: Path | None = None):
         self.home = home or app_dir()
         self.path = self.home / "projects.json"
+        # Import the former app's settings once, only for the default location.
+        # Explicit homes are isolated; neither an existing new registry nor the
+        # legacy file is overwritten. Share the legacy lock during the copy.
+        if (home is None and not os.environ.get("UEROWFORGE_HOME")
+                and not os.environ.get("TABLEDESK_HOME") and not self.path.exists()):
+            legacy_home = self.home.with_name("UETableDesk")
+            legacy_path = legacy_home / "projects.json"
+            if legacy_path.is_file():
+                with file_lock(legacy_home / "registry.lock"), file_lock(self.home / "registry.lock"):
+                    if not self.path.exists():
+                        Registry(legacy_home)  # Validate before copying; no recursive migration.
+                        atomic_write(self.path, legacy_path.read_bytes())
         self.projects: list[Project] = []
         self._loaded_digest: str | None = None
         if self.path.exists():
             data = self.path.read_bytes()
             try:
                 value = json.loads(data)
-                if value.get("version") != 1:
+                if not isinstance(value, dict) or value.get("version") != 1:
                     raise ValueError("지원하지 않는 설정 버전")
                 self.projects = [Project(**p) for p in value["projects"]]
             except (ValueError, TypeError, KeyError) as exc:
@@ -263,7 +276,7 @@ def file_lock(path: Path):
         fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError as exc:
         raise ToolError(f"다른 변환/설정 저장이 진행 중이거나 이전 잠금이 남아 있습니다.\n"
-                        f"모든 TableDesk가 종료된 것을 확인한 뒤 이 lock 파일만 제거하세요:\n{path}") from exc
+                        f"UERowForge와 구버전 TableDesk가 모두 종료된 것을 확인한 뒤 이 lock 파일만 제거하세요:\n{path}") from exc
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             stream.write(f"pid={os.getpid()}\n")
@@ -520,7 +533,7 @@ def merge_header(existing: str | None, tables: list[Table], project: Project) ->
         return body + "\n\n" + "\n\n".join(fresh[n] for n in sorted(fresh)) + "\n"
     existing = existing.replace("\r\n", "\n")
     if not existing.startswith(MARKER + "\n"):
-        raise ToolError(f"기존 {project.header_name}은 TableDesk 관리 파일이 아닙니다.\n"
+        raise ToolError(f"기존 {project.header_name}은 UERowForge 관리 파일이 아닙니다.\n"
                         "자동 수정하지 않습니다. 비어 있는 헤더 하위 경로를 지정하세요.")
     generated = re.findall(r'^\s*#include\s+[<\"]([^>\"]+)[>\"]', existing, re.M)
     if not generated or generated[-1] != f"{project.prefix}StructTypes.generated.h":

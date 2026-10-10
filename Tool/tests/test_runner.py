@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from test_core import fixture, SAMPLE
-from tabledesk.core import ToolError, build_plan, execute_plan, load_tables
-from tabledesk.unreal_runner import run_assets
+from uerowforge.core import ToolError, build_plan, execute_plan, load_tables
+from uerowforge.unreal_runner import run_assets, check_engine
 
 
 class RunnerTests(unittest.TestCase):
@@ -26,7 +26,11 @@ class RunnerTests(unittest.TestCase):
 
     def popen(self, ok=True, partial=False):
         def fake(command, **kwargs):
-            job=json.loads(Path(kwargs['env']['TABLEDESK_JOB']).read_text())
+            bridge = Path(kwargs['env']['UEROWFORGE_BRIDGE'])
+            self.assertEqual(bridge.parent.name, "uerowforge")
+            self.assertTrue(bridge.is_file())
+            self.assertIn("UEROWFORGE_BRIDGE", " ".join(command))
+            job=json.loads(Path(kwargs['env']['UEROWFORGE_JOB']).read_text())
             self.assertEqual(len(job['code_files']),3)
             saved=[]
             jobs=job['tables'][:1] if partial else job['tables']
@@ -37,7 +41,7 @@ class RunnerTests(unittest.TestCase):
                 saved.append(entry['asset_path'])
             Path(job['result_path']).write_text(json.dumps({'ok':ok,'saved':saved,'backup':'test-backup','error':'' if ok else 'simulated'}))
             class Process:
-                stdout=io.StringIO('[TABLEDESK] fake external process\n')
+                stdout=io.StringIO('[UEROWFORGE] fake external process\n')
                 def __enter__(self):return self
                 def __exit__(self,*args):return False
                 def wait(self):return 0 if ok else 1
@@ -45,8 +49,8 @@ class RunnerTests(unittest.TestCase):
         return fake
 
     def run_fake(self, **kwargs):
-        with patch('tabledesk.unreal_runner.app_dir',return_value=self.root/'App'), \
-             patch('tabledesk.unreal_runner.subprocess.Popen',side_effect=self.popen(**kwargs)):
+        with patch('uerowforge.unreal_runner.app_dir',return_value=self.root/'App'), \
+             patch('uerowforge.unreal_runner.subprocess.Popen',side_effect=self.popen(**kwargs)):
             return run_assets(self.plan,lambda line:None)
 
     def test_successful_process_commits_registration(self):
@@ -69,7 +73,17 @@ class RunnerTests(unittest.TestCase):
     def test_config_collision_blocks_before_starting_engine(self):
         ini=self.project.root/'Config/DefaultGame.ini'
         ini.parent.mkdir();ini.write_text('[UETableDesk.DataTables]\nPlayers=/Manual\n')
-        with patch('tabledesk.unreal_runner.subprocess.Popen') as process:
+        with patch('uerowforge.unreal_runner.subprocess.Popen') as process:
             with self.assertRaisesRegex(ToolError,'수기'):
                 run_assets(self.plan,lambda line:None)
             process.assert_not_called()
+
+
+    def test_new_and_legacy_demo_markers_both_block_engine_execution(self):
+        path = Path(self.project.uproject)
+        original = json.loads(path.read_text())
+        for key in ("UERowForgeDemo", "TableDeskDemo"):
+            with self.subTest(key=key):
+                path.write_text(json.dumps(dict(original, **{key: True})))
+                with self.assertRaisesRegex(ToolError, "샘플 프로젝트"):
+                    check_engine(self.plan)

@@ -14,10 +14,10 @@ import unittest
 from unittest.mock import patch
 
 from test_core import SAMPLE, fixture
-from tabledesk.core import (Field, GENERATOR_REVISION, MANIFEST, ToolError,
+from uerowforge.core import (Field, GENERATOR_REVISION, MANIFEST, ToolError,
                             build_plan, digest, execute_plan, json_text, load_tables, register_project)
-from tabledesk.runtime_registration import build_registration_plan, registration_block
-from tabledesk.subsystem_codegen import subsystem_header, subsystem_source
+from uerowforge.runtime_registration import build_registration_plan, registration_block
+from uerowforge.subsystem_codegen import subsystem_header, subsystem_source
 
 LEGACY = Path(__file__).parent / "fixtures" / "v020"
 
@@ -220,13 +220,13 @@ class GetterTests(unittest.TestCase):
         self.install_v020()
         plan = build_plan(self.project, self.tables)
         before = {w.path: w.path.read_bytes() for w in plan.writes}
-        from tabledesk import core
+        from uerowforge import core
         write = core.atomic_write
         def fail_source(path, data):
             if path == self.project.root / self.project.subsystem_source_relative:
                 raise OSError("simulated migration write failure")
             return write(path, data)
-        with patch("tabledesk.core.atomic_write", side_effect=fail_source):
+        with patch("uerowforge.core.atomic_write", side_effect=fail_source):
             with self.assertRaises(ToolError):
                 execute_plan(plan)
         for path, content in before.items():

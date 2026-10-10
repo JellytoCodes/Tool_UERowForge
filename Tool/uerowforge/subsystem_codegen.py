@@ -10,7 +10,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .core import Project, Table
 
-# Marker format stays compatible; the manifest's generator_revision tracks APIs.
+# Compatibility identifiers (including log labels in generated C++) remain
+# byte-identical to v0.2.2: an app rename must not rewrite game project code.
+# The manifest's generator_revision tracks actual output/API changes.
 SUBSYSTEM_MARKER = "// UE TABLEDESK - MANAGED SUBSYSTEM v1"
 RUNTIME_SECTION = "UETableDesk.DataTables"
 

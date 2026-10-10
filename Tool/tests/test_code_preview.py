@@ -7,8 +7,8 @@ import tempfile
 import unittest
 
 from test_core import fixture, SAMPLE
-from tabledesk.core import Field, Issue, ToolError, build_plan, execute_plan, load_tables, register_project
-from tabledesk.code_preview import build_project_code_preview, code_preview_from_plan
+from uerowforge.core import Field, Issue, ToolError, build_plan, execute_plan, load_tables, register_project
+from uerowforge.code_preview import build_project_code_preview, code_preview_from_plan
 
 
 class WholeCodePreviewTests(unittest.TestCase):

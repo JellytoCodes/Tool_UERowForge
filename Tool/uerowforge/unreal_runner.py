@@ -16,7 +16,7 @@ def resource_root() -> Path:
 
 def check_engine(plan: Plan) -> Path:
     descriptor = json.loads(Path(plan.project.uproject).read_text(encoding="utf-8-sig"))
-    if descriptor.get("TableDeskDemo"):
+    if descriptor.get("UERowForgeDemo") or descriptor.get("TableDeskDemo"):
         raise ToolError("샘플 프로젝트는 파일 변환 테스트 전용입니다. 실제 언리얼 프로젝트가 아닙니다.")
     cmd = Path(plan.project.engine_cmd)
     if not cmd.is_file() or cmd.name.lower() not in ("unrealeditor-cmd.exe", "unrealeditor-cmd"):
@@ -49,12 +49,12 @@ def run_assets(plan: Plan, on_log) -> dict:
         entry["previous_asset_sha256"] = digest(disk.read_bytes()) if disk.exists() else None
     atomic_write(job_path, json_text(job).encode("utf-8"))
     env = os.environ.copy()
-    env["TABLEDESK_JOB"] = str(job_path)
-    bridge = resource_root() / "tabledesk" / "unreal_bridge.py"
-    env["TABLEDESK_BRIDGE"] = str(bridge)
+    env["UEROWFORGE_JOB"] = str(job_path)
+    bridge = resource_root() / "uerowforge" / "unreal_bridge.py"
+    env["UEROWFORGE_BRIDGE"] = str(bridge)
     # No spaces in the -script argument; the external path travels via env instead
     # of relying on Unreal's nested command-line quoting on Windows.
-    bootstrap = "__import__('runpy').run_path(__import__('os').environ['TABLEDESK_BRIDGE'],run_name='__main__')"
+    bootstrap = "__import__('runpy').run_path(__import__('os').environ['UEROWFORGE_BRIDGE'],run_name='__main__')"
     command = [str(cmd), plan.project.uproject, "-run=pythonscript", "-script=" + bootstrap,
                "-unattended", "-nop4", "-nosplash", "-stdout", "-FullStdOutLogOutput", "-UTF8Output"]
     on_log("언리얼 에셋 반영 시작. 로그: " + str(home / "engine.log"))
@@ -67,7 +67,7 @@ def run_assets(plan: Plan, on_log) -> dict:
                 assert proc.stdout is not None
                 for line in proc.stdout:
                     log.write(line)
-                    if "TABLEDESK" in line or "Error" in line or "error" in line:
+                    if "UEROWFORGE" in line or "TABLEDESK" in line or "Error" in line or "error" in line:
                         on_log(line.rstrip())
                 code = proc.wait()
     if not result_path.exists():

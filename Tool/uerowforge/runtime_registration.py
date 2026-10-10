@@ -63,12 +63,12 @@ def build_registration_plan(converted: Plan) -> Plan:
     pattern = re.compile(r"^" + re.escape(BEGIN) + r"\r?\n.*?^" + re.escape(END) + r"(?=\r?$)", re.M | re.S)
     matches = list(pattern.finditer(text))
     if text.count(BEGIN) != len(matches) or text.count(END) != len(matches) or len(matches) > 1:
-        raise ToolError("DefaultGame.ini의 TableDesk 등록 마커가 손상되거나 중복됐습니다.")
+        raise ToolError("DefaultGame.ini의 도구 등록 마커가 손상되거나 중복됐습니다.")
     if matches:
         match = matches[0]
         owned = match.group(0).replace("\r\n", "\n")
         if digest(owned) != previous_runtime.get("block_sha256"):
-            raise ToolError("DefaultGame.ini의 TableDesk 등록 구역이 외부에서 수정됐거나 소유 이력이 없습니다.")
+            raise ToolError("DefaultGame.ini의 도구 등록 구역이 외부에서 수정됐거나 소유 이력이 없습니다.")
         outside = text[:match.start()] + text[match.end():]
     else:
         if previous_runtime:

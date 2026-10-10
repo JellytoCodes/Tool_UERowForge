@@ -41,7 +41,7 @@ jobs:
       - name: Validate sample workbook
         run: python main.py --validate resources/TableTemplate.xlsx
       - name: Compile Python sources
-        run: python -m compileall -q main.py tabledesk tests
+        run: python -m compileall -q main.py uerowforge tests
 
   gui-smoke:
     name: Linux Tk GUI smoke (not Windows / Unreal)

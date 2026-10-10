@@ -18,7 +18,7 @@ python main.py %*
 :done
 if errorlevel 1 (
   echo.
-  echo UE TableDesk failed. Review the message above.
+  echo UERowForge failed. Review the message above.
   pause
   exit /b 1
 )

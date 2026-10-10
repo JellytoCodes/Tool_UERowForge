@@ -192,7 +192,7 @@ class CodePreviewPanel(ttk.Frame):
 class App:
     def __init__(self, root: tk.Tk, registry: Registry | None = None):
         self.root = root
-        root.title(f"UE TableDesk · {__version__}")
+        root.title(f"UERowForge · {__version__}")
         root.geometry("1240x860")
         root.minsize(1000, 700)
         configure_style(root)
@@ -300,7 +300,7 @@ class App:
         self.clear()
         top = ttk.Frame(self.body)
         top.pack(fill="x", pady=(4, 22))
-        ttk.Label(top, text="UE TableDesk", style="Title.TLabel").pack(side="left")
+        ttk.Label(top, text="UERowForge", style="Title.TLabel").pack(side="left")
         ttk.Label(top, text=f"PROTOTYPE  {__version__}", style="Muted.TLabel").pack(side="right", pady=(10, 0))
         ttk.Label(self.body, text="엑셀 하나에서 시작해, 여러 언리얼 프로젝트로.", style="Heading.TLabel").pack(anchor="w")
         ttk.Label(self.body, text="프로젝트는 연결만 합니다. 도구를 각 프로젝트에 복사할 필요가 없습니다.", style="Muted.TLabel").pack(anchor="w", pady=(7, 24))
@@ -361,8 +361,8 @@ class App:
         source.mkdir(parents=True, exist_ok=True)
         uproject = demo / "OperationBreakpoint.uproject"
         if not uproject.exists():
-            atomic_write(uproject, json_text({"FileVersion": 3, "TableDeskDemo": True,
-                         "Description": "TableDesk conversion-only fixture, not a buildable Unreal project",
+            atomic_write(uproject, json_text({"FileVersion": 3, "UERowForgeDemo": True,
+                         "Description": "UERowForge conversion-only fixture, not a buildable Unreal project",
                          "Modules": [{"Name": "OperationBreakpoint", "Type": "Runtime"}]}).encode("utf-8"))
             atomic_write(source / "OperationBreakpoint.Build.cs", b"// Conversion-only fixture. NOT a buildable project.\n")
         project = self.registry.add(register_project(uproject))
@@ -781,7 +781,7 @@ class App:
                    "2. 이 프로젝트를 연 모든 언리얼 에디터를 종료했습니까?\n"
                    "3. Python Editor Script Plugin / Editor Scripting Utilities를 켰습니까?\n\n"
                    "선택한 에셋을 생성하거나 데이터를 교체하고 저장합니다. 기존 에셋은 파일 백업합니다.\n"
-                   "모두 성공하면 Config/DefaultGame.ini의 TableDesk 전용 구역에 경로를 자동 등록합니다.\n"
+                   "모두 성공하면 Config/DefaultGame.ini의 도구 전용 구역에 경로를 자동 등록합니다.\n"
                    "쿠킹 설정은 자동 변경하지 않습니다. 패키징 전 테이블 폴더의 포함 여부를 확인하세요.\n"
                    "여러 에셋 저장 중 실패하면 일부 에셋만 반영될 수 있습니다. 프로젝트 복사본에서 먼저 시험하세요.\n\n"
                    "위 내용을 확인했고 실행하겠습니까?")
@@ -818,6 +818,6 @@ def launch(demo=False):
             root.after(100, lambda: app.perform(app.demo))
         root.mainloop()
     except Exception as exc:
-        messagebox.showerror("UE TableDesk 시작 실패", str(exc), parent=root)
+        messagebox.showerror("UERowForge 시작 실패", str(exc), parent=root)
         root.destroy()
         raise

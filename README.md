@@ -1,20 +1,20 @@
-# UE TableDesk
+# UERowForge
 
 엑셀에서 Unreal DataTable용 JSON·행 구조체·관리 서브시스템을 생성하는 Python/Tkinter 도구입니다.
 프로그램 하나에 여러 프로젝트를 등록하며, 대상 프로젝트 안에 도구를 설치하지 않습니다.
 
-**v0.2.2 / generator revision 3 / 프로토타입.** 이번 변경은 폴더 정리입니다. 변환·등록 규칙은 그대로입니다.
+**v0.2.2 / generator revision 3 / 프로토타입.** 이번 변경은 **UE TableDesk → UERowForge 명칭 변경**입니다. 변환·등록 규칙은 그대로입니다.
 코드를 수정하는 작업자는 [AGENTS.md](AGENTS.md)를 확인하세요. 사용법과 남은 작업은 이 문서에서 관리합니다.
 
 ## 폴더 구성
 
 ```text
-UETableDesk/
+UERowForge/
 ├─ Tool/                    # 변환기 관련 파일 전체
 │  ├─ run.bat               # 실행
 │  ├─ build_windows.bat     # Windows EXE 만들기
 │  ├─ main.py
-│  ├─ tabledesk/            # 앱 소스
+│  ├─ uerowforge/           # 앱 소스
 │  ├─ resources/            # 엑셀 템플릿 한 개
 │  └─ tests/                # 회귀·GUI 테스트
 ├─ Samples/                 # 사용자가 직접 만든 UE 5.8 프로젝트를 넣을 자리
@@ -38,7 +38,8 @@ python Tool/main.py --demo  # 변환 UI만 확인하는 임시 모형
 
 `--demo`와 **변환 UI 데모** 버튼은 안전한 모형 프로젝트를 사용하므로 빌드·에셋 반영에 사용하지 않습니다.
 임시 모형은 앱의 로컬 설정 폴더에만 생성하며, 사용자가 만드는 `Samples` 프로젝트와는 별개입니다.
-EXE가 필요해지면 Windows에서 아래 명령으로 만들고 `Tool/dist/UETableDesk/` **폴더 전체**를 배포합니다.
+EXE가 필요해지면 Windows에서 아래 명령으로 만듭니다. 결과는 **`Tool/dist/UERowForge/UERowForge.exe`**이며,
+`Tool/dist/UERowForge/` **폴더 전체**를 배포합니다.
 이 패키지에는 미리 빌드한 EXE가 없으며 Windows 빌드·실행은 아직 미검증입니다.
 
 ```powershell
@@ -160,7 +161,11 @@ JSON 임포트 키는 `RowName`이고 기존 데이터를 전체 입력으로 �
 충돌을 무시하려고 manifest를 지우거나 해시를 고치지 마세요. 경로 설정 변경은 기존 파일의 이동·삭제가 아닙니다.
 백업은 프로젝트 `Saved/TableDesk` 아래에 보관하며 다중 파일의 완전한 원자성은 보장하지 않습니다.
 
-**기존 게임 프로젝트는 이번 폴더 정리 때문에 재변환·재빌드할 필요가 없습니다.** 앱 실행 위치만 `Tool`로 바뀝니다.
+**이름 변경만으로 기존 게임 프로젝트를 재변환·재빌드할 필요는 없습니다.** 앱은 `Tool/run.bat`으로 실행합니다.
+`UDataTableSubsystem`, 행 구조체 명명 규칙과 생성 결과는 그대로입니다.
+기존 생성 파일의 소유권 해시와 런타임 연결을 유지하기 위해 `.tabledesk-manifest.json`, `TABLEDESK` 관리 마커,
+`UETableDesk.DataTables` INI 섹션, 생성 C++의 기존 로그 표기와 `Saved/TableDesk` 잠금·백업 경로는 호환 식별자로 남깁니다.
+이 항목들을 이름만 일괄 치환하지 마세요. 앱·패키지·배포 이름과는 별개입니다.
 v0.2.0에서 오면 `Find/TryGet` 호출을 Getter 방식으로 직접 교체하고, 행 헤더를 명시적으로 include한 뒤 전체 빌드하세요.
 v0.1.x에서 오면 BP 필드가 읽기 전용으로 바뀌므로 기존 쓰기 노드도 점검하세요.
 이전 `Public/Data/Generated` 경로의 헤더를 옮길 때는 백업·에디터 종료 후 manifest와 함께 옮기고 include를 갱신해야 합니다.
@@ -168,10 +173,14 @@ v0.1.x에서 오면 BP 필드가 읽기 전용으로 바뀌므로 기존 쓰기 
 상세 구버전 이관 기록은 기존 Git 커밋에 남아 있습니다.
 
 이 ZIP에는 기존 `.git` 이력이 포함돼 있습니다. **새 폴더에 압축을 풀어 Git Extensions에서 여세요.**
-이미 작업 중인 저장소에는 `.git`을 덮어쓰지 말고 필요한 파일 변경만 비교해 반영하세요. 이번 정리는 원격 업로드 작업이 아닙니다.
+이미 작업 중인 저장소에는 `.git`을 덮어쓰지 말고 필요한 파일 변경만 비교해 반영하세요. 이번 변경은 원격 업로드 작업이 아닙니다.
 
 도구 저장소에는 앱·테스트·사용자가 추가한 샘플을, 게임 저장소에는 팀 엑셀·생성 코드/JSON/에셋·manifest·필요한 INI 변경을 관리합니다.
-로컬 프로젝트 목록은 `%LOCALAPPDATA%/UETableDesk/projects.json`에 저장되며 `TABLEDESK_HOME`으로 변경할 수 있습니다.
+로컬 프로젝트 목록은 `%LOCALAPPDATA%/UERowForge/projects.json`에 저장됩니다. 기존 앱을 종료한 뒤 처음 실행하면,
+새 설정 파일이 없는 경우에만 `%LOCALAPPDATA%/UETableDesk/projects.json`의 유효한 설정을 복사합니다.
+기존 파일은 유지하며 이미 존재하는 새 설정을 덮어쓰지 않습니다. 이후 두 앱의 설정은 자동 동기화하지 않습니다.
+설정 위치는 `UEROWFORGE_HOME`으로 변경하며, 없으면 기존 `TABLEDESK_HOME`도 지원합니다.
+환경 변수로 위치를 지정한 경우에는 기본 폴더에서 자동 복사하지 않습니다.
 이 설정은 아직 팀 공용으로 동기화되지 않습니다. 개인 경로·로그·백업은 커밋하지 마세요.
 생성물은 바이트 해시로 보호하므로 Git 줄바꿈 변환에도 주의해야 합니다. 기존 파일을 일괄 정규화하지 마세요.
 
@@ -199,14 +208,14 @@ TD 번호는 내부 작업 표기이며 GitHub Issue가 등록됐다는 뜻은 �
 cd Tool
 python -m unittest discover -s tests -v
 python main.py --validate resources/TableTemplate.xlsx
-python -m compileall -q main.py tabledesk tests
+python -m compileall -q main.py uerowforge tests
 python tests/gui_smoke.py  # 디스플레이 필요; Linux headless는 xvfb-run -a 사용
 ```
 
-폴더 정리 후 Python 자동 테스트 152개·템플릿 검증·Linux GUI smoke를 통과했습니다. 테스트용 가상 프로젝트는 임시 폴더에만 만듭니다.
+명칭 변경 후 Python 자동 테스트 168개·템플릿 검증·Linux GUI smoke를 통과했습니다. 테스트용 가상 프로젝트는 임시 폴더에만 만듭니다.
 이 테스트들은 사용자 UE 샘플에 의존하지 않으며, UHT·C++ 컴파일 검증이 아닙니다.
 Windows EXE와 실제 Unreal 빌드·BP·런타임·에셋·쿠킹은 아직 미검증입니다.
-[CI 설정](.github/workflows/ci.yml)은 새 `Tool` 경로에 맞췄으며 원격 실행 결과는 별도 확인해야 합니다.
+[CI 설정](.github/workflows/ci.yml)은 `Tool/uerowforge` 경로에 맞췄으며 원격 실행 결과는 별도 확인해야 합니다.
 변경 이력은 Git으로 관리하고 별도 CHANGELOG/검증 보고서는 추가하지 않습니다.
 
 라이선스는 [MIT](LICENSE.txt)입니다.

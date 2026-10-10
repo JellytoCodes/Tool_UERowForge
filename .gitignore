@@ -23,6 +23,7 @@ Thumbs.db
 
 # Local working data, not test fixtures
 .local/
+.uerowforge-local/
 .tabledesk-local/
 
 # Do NOT ignore generated ownership manifests globally.

@@ -30,7 +30,7 @@ def under(root, path):
 
 
 def main():
-    job_path = Path(os.environ["TABLEDESK_JOB"])
+    job_path = Path(os.environ.get("UEROWFORGE_JOB") or os.environ["TABLEDESK_JOB"])
     job = json.loads(job_path.read_text(encoding="utf-8"))
     result_path = job_path.parent / "result.json"
     if Path(job["result_path"]).resolve() != result_path.resolve():
@@ -93,7 +93,7 @@ def main():
             if exists != disk.exists():
                 raise RuntimeError("Asset registry/disk state differs. Check the project: " + asset_path)
             prepared.append((entry, source, struct, transient, asset, disk))
-            unreal.log("[TABLEDESK] VALIDATED " + entry["table"])
+            unreal.log("[UEROWFORGE] VALIDATED " + entry["table"])
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid.uuid4().hex[:8]
         backup = under(root, root / "Saved" / "TableDesk" / "AssetBackups" / stamp)
         backup.mkdir(parents=True, exist_ok=True)
@@ -124,16 +124,16 @@ def main():
             if not asset_library.save_loaded_asset(asset, only_if_is_dirty=False):
                 raise RuntimeError("Asset save failed: " + asset_path)
             result["saved"].append(asset_path)
-            unreal.log("[TABLEDESK] SAVED " + asset_path)
+            unreal.log("[UEROWFORGE] SAVED " + asset_path)
         result["ok"] = True
     except Exception as exc:
         result["error"] = str(exc)
         result["traceback"] = traceback.format_exc()
-        print("[TABLEDESK] ERROR " + str(exc))
+        print("[UEROWFORGE] ERROR " + str(exc))
     finally:
         result_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     if not result["ok"]:
-        raise RuntimeError(result.get("error", "TableDesk failed"))
+        raise RuntimeError(result.get("error", "UERowForge failed"))
 
 
 if __name__ == "__main__":

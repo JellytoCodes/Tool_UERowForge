@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from test_core import fixture, SAMPLE
-from tabledesk.core import ToolError, build_plan, execute_plan, load_tables
-from tabledesk.runtime_registration import build_registration_plan, commit_registration
+from uerowforge.core import ToolError, build_plan, execute_plan, load_tables
+from uerowforge.runtime_registration import build_registration_plan, commit_registration
 
 
 class RegistrationTests(unittest.TestCase):
@@ -145,7 +145,7 @@ class RegistrationTests(unittest.TestCase):
         self.assertFalse(self.ini.exists())
 
     def test_manifest_write_failure_restores_ini(self):
-        from tabledesk import core
+        from uerowforge import core
         self.ini.parent.mkdir();self.ini.write_bytes(b'[Other]\nKeep=1\n')
         before=self.ini.read_bytes()
         plan=self.registration()
@@ -155,7 +155,7 @@ class RegistrationTests(unittest.TestCase):
             if path==plan.manifest_path:
                 raise OSError('manifest write failed')
             return original(path,data)
-        with patch('tabledesk.core.atomic_write',side_effect=fail):
+        with patch('uerowforge.core.atomic_write',side_effect=fail):
             with self.assertRaises(ToolError):
                 commit_registration(plan,saved)
         self.assertEqual(before,self.ini.read_bytes())

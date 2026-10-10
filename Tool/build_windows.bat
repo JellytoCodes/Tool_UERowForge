@@ -9,13 +9,13 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-py -3 -m PyInstaller --clean --windowed --onedir --name UETableDesk --add-data "resources:resources" --add-data "../README.md:." --add-data "../LICENSE.txt:." --add-data "tabledesk/unreal_bridge.py:tabledesk" main.py
+py -3 -m PyInstaller --clean --windowed --onedir --name UERowForge --add-data "resources:resources" --add-data "../README.md:." --add-data "../LICENSE.txt:." --add-data "uerowforge/unreal_bridge.py:uerowforge" main.py
 if errorlevel 1 (
   echo Packaging failed.
   pause
   exit /b 1
 )
 echo.
-echo Output: dist\UETableDesk\UETableDesk.exe
-echo Distribute the ENTIRE dist\UETableDesk directory, not just the EXE.
+echo Output: dist\UERowForge\UERowForge.exe
+echo Distribute the ENTIRE dist\UERowForge directory, not just the EXE.
 pause

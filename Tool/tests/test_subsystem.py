@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from test_core import fixture, SAMPLE
-from tabledesk.core import (Field, ToolError, build_plan, digest, execute_plan, header_blocks,
+from uerowforge.core import (Field, ToolError, build_plan, digest, execute_plan, header_blocks,
                             json_text, load_tables, struct_text)
 
 
@@ -202,14 +202,14 @@ class SubsystemTests(unittest.TestCase):
         self.assertFalse((self.project.root / self.project.header_relative).exists())
 
     def test_late_source_write_failure_rolls_back_json_and_all_cpp(self):
-        from tabledesk import core
+        from uerowforge import core
         plan = build_plan(self.project, self.tables)
         original = core.atomic_write
         def fail(path, data):
             if path == self.project.root / self.project.subsystem_source_relative:
                 raise OSError("source write failed")
             return original(path, data)
-        with patch("tabledesk.core.atomic_write", side_effect=fail):
+        with patch("uerowforge.core.atomic_write", side_effect=fail):
             with self.assertRaises(ToolError):
                 execute_plan(plan)
         for task in plan.writes:
