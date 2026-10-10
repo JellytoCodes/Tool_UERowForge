@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "tables": {
+    "Players": {
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "MaxHP",
+          "type": "Int"
+        },
+        {
+          "name": "MoveSpeed",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ],
+      "json_relative": "DataTable/Players.json",
+      "json_sha256": "b684f6701a802b118bdb43df38940f225bba0659ece7c3e8ee39a4f032a18ae8",
+      "row_keys": [
+        "Player_001",
+        "Player_002",
+        "Player_003"
+      ],
+      "asset_path": "/Game/DataTables/DT_Players",
+      "block_sha256": "617801b6fd7c278f004fb3f514224042ef55dd50aa29ba58d765bda010da48ef"
+    },
+    "Items": {
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "Weight",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ],
+      "json_relative": "DataTable/Items.json",
+      "json_sha256": "2cb003aed6d87d298dd19b212085d46cff7f66d3bcbdcabd5dcd89201ba01663",
+      "row_keys": [
+        "Item_001",
+        "Item_002",
+        "Item_003"
+      ],
+      "asset_path": "/Game/DataTables/DT_Items",
+      "block_sha256": "fda8e1c1fd8a4ff59a700fe4e4a7d5418d2ff5aad85bd273a35e3c0826aeed09"
+    }
+  },
+  "prefix": "TDS",
+  "module": "TableDeskSample",
+  "managed_files": {
+    "Source/TableDeskSample/Public/Data/DataTableSubsystem.h": "5202b3057e8115a71d8880026d9ed9a17b80c785f8c26b719acd79774f941bb6",
+    "Source/TableDeskSample/Private/Data/DataTableSubsystem.cpp": "b6c633f85d6f1e9cdd2779c1c19b69265afbb9a9f90ab58a3dea624000c33ee9"
+  },
+  "generator_revision": 3
+}

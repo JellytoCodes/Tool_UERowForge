@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from test_core import SAMPLE, fixture
 from tabledesk.core import (Field, GENERATOR_REVISION, MANIFEST, ToolError,
-                            build_plan, digest, execute_plan, json_text, load_tables)
+                            build_plan, digest, execute_plan, json_text, load_tables, register_project)
 from tabledesk.runtime_registration import build_registration_plan, registration_block
 from tabledesk.subsystem_codegen import subsystem_header, subsystem_source
 
@@ -128,11 +128,17 @@ class GetterTests(unittest.TestCase):
         self.assertIn(b"Players=/Game/DataTables/DT_Players.DT_Players", ini)
 
     def test_sample_outputs_match_current_generator(self):
-        plan = build_plan(self.project, self.tables)
-        expected = Path(__file__).parents[1] / "examples/expected"
+        sample = Path(__file__).parents[1] / "Samples/TableDeskSample"
+        copied = Path(self.tmp.name) / "RealSample"
+        shutil.copytree(sample, copied, ignore=shutil.ignore_patterns(
+            "Binaries", "Intermediate", "Saved", "DerivedDataCache", ".vs"))
+        project = register_project(copied / "TableDeskSample.uproject")
+        tables, issues = load_tables([copied / "Excel/TableTemplate.xlsx"])
+        self.assertFalse(issues)
+        plan = build_plan(project, tables)
         for task in plan.writes:
-            if task.label.startswith(("C++", "JSON")):
-                self.assertEqual((expected / task.path.name).read_bytes(), task.content, task.path.name)
+            self.assertEqual(task.path.read_bytes(), task.content, task.path.name)
+        self.assertFalse(plan.changed)
 
     def test_v020_migration_changes_only_subsystem_and_manifest(self):
         manifest = self.install_v020()

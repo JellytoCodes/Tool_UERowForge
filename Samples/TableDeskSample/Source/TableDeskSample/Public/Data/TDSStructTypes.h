@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "OBStructTypes.generated.h"
+#include "TDSStructTypes.generated.h"
 
 
 // BEGIN TABLEDESK: Items
 USTRUCT(BlueprintType)
-struct OPERATIONBREAKPOINT_API FOBItemsRow : public FTableRowBase
+struct TABLEDESKSAMPLE_API FTDSItemsRow : public FTableRowBase
 {
     GENERATED_BODY()
 
@@ -33,7 +33,7 @@ struct OPERATIONBREAKPOINT_API FOBItemsRow : public FTableRowBase
 
 // BEGIN TABLEDESK: Players
 USTRUCT(BlueprintType)
-struct OPERATIONBREAKPOINT_API FOBPlayersRow : public FTableRowBase
+struct TABLEDESKSAMPLE_API FTDSPlayersRow : public FTableRowBase
 {
     GENERATED_BODY()
 

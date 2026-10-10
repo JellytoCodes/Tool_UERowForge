@@ -220,6 +220,10 @@ def main():
             hpath.write_bytes(original)
             app.refresh_code_preview(force=True)
             assert len(app.code_panel.documents) == 3
+            # Old installs used examples/TableTemplate.xlsx. Opening the demo
+            # must replace stale paths, not keep two conflicting templates.
+            app.project.sources = [str(Path(tmp) / "old-install/examples/TableTemplate.xlsx")]
+            registry.save()
             # Restore sample rows, then capture the actual running UI if asked.
             app.demo()
             limit = time.monotonic() + 10
@@ -228,6 +232,7 @@ def main():
                 time.sleep(0.03)
             root.update()
             assert not app.busy and not errors, errors
+            assert app.project.sources == [str(ROOT / "Samples/TableDeskSample/Excel/TableTemplate.xlsx")]
             shot_dir = os.environ.get("TABLEDESK_SCREENSHOTS")
             if shot_dir:
                 from PIL import ImageGrab

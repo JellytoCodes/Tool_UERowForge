@@ -54,7 +54,12 @@ TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 
 | `tests/`, `scripts/gui_smoke.py` | 회귀 테스트·GUI 테스트 |
 
 `tests/fixtures/v020`은 원본 v0.2.0 생성물을 보존한 이관 입력이다. 현재 생성 예시로 수정하거나 게임에 복사하지 않는다.
-현재 예시는 `examples/expected`에 둔다. fixture 출처와 구버전 문서 원문은 기존 Git 이력에 남아 있다.
+실제 소스 샘플은 **`Samples/TableDeskSample` (UE 5.8)** 하나로 관리한다. `Excel/TableTemplate.xlsx`가 템플릿의 유일한 원본이다.
+샘플의 행 헤더·Subsystem·JSON·manifest는 실제 생성기로 만든다. 수기 소비 코드는 `TableDeskSampleGameMode`로 분리한다.
+샘플은 Source-only이며 에셋/빌드/실행 검증 완료를 가장하지 않는다. TD-001을 샘플 코드에서 몰래 우회해 구현하지 않는다.
+`--demo`는 기존 변환 UI용 모형을 계속 사용한다. 실제 UE 샘플과 혼동하지 않는다.
+샘플 바이너리/캐시를 Git이나 EXE 번들에 넣지 않는다. build_windows.bat은 샘플의 Excel 하위 폴더만 포함한다.
+fixture 출처와 구버전 문서 원문은 기존 Git 이력에 남아 있다.
 
 작업 전 `git status`로 사용자 변경을 확인한다. 요청 범위만 최소 수정하고 기능 변경 시 테스트와 README 현황을 함께 갱신한다.
 테스트 명령은 README의 검증 절에 있다. GUI 변경은 GUI smoke를 추가 확인한다.

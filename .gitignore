@@ -27,3 +27,18 @@ Thumbs.db
 
 # Do NOT ignore generated ownership manifests globally.
 # tests/fixtures/**/.tabledesk-manifest.json must remain tracked.
+
+# Unreal sample: keep source, config, workbook, DataTable JSON/assets and manifests.
+Samples/**/Binaries/
+Samples/**/Intermediate/
+Samples/**/Saved/
+Samples/**/DerivedDataCache/
+Samples/**/*.sln
+Samples/**/*.slnx
+Samples/**/*.VC.db
+Samples/**/*.VC.opendb
+Samples/**/.vs/
+Samples/**/.idea/
+Samples/**/.vscode/
+Samples/**/*.opensdf
+Samples/**/*.sdf

@@ -35,7 +35,7 @@ jobs:
       - name: Unit tests (not Unreal compilation)
         run: python -m unittest discover -s tests -v
       - name: Validate sample workbook
-        run: python main.py --validate examples/TableTemplate.xlsx
+        run: python main.py --validate Samples/TableDeskSample/Excel/TableTemplate.xlsx
       - name: Compile Python sources
         run: python -m compileall -q main.py tabledesk tests scripts
 

@@ -9,7 +9,7 @@
 
 /** Per-GameInstance table cache. Game-thread use; returned tables are shared objects. */
 UCLASS(BlueprintType)
-class OPERATIONBREAKPOINT_API UDataTableSubsystem : public UGameInstanceSubsystem
+class TABLEDESKSAMPLE_API UDataTableSubsystem : public UGameInstanceSubsystem
 {
     GENERATED_BODY()
 

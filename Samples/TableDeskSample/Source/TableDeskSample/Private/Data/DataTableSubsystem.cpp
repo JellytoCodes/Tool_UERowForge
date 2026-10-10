@@ -2,7 +2,7 @@
 // Auto-generated. Registration is committed after successful UE asset import.
 #include "Data/DataTableSubsystem.h"
 
-#include "Data/OBStructTypes.h"
+#include "Data/TDSStructTypes.h"
 #include "CoreGlobals.h"
 #include "Misc/ConfigCacheIni.h"
 #include "UObject/UObjectGlobals.h"
@@ -42,8 +42,8 @@ void UDataTableSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     Super::Initialize(Collection);
 
     // Small master tables are synchronously loaded once per GameInstance.
-    ItemsTable = LoadRegisteredTable(TEXT("Items"), FOBItemsRow::StaticStruct());
-    PlayersTable = LoadRegisteredTable(TEXT("Players"), FOBPlayersRow::StaticStruct());
+    ItemsTable = LoadRegisteredTable(TEXT("Items"), FTDSItemsRow::StaticStruct());
+    PlayersTable = LoadRegisteredTable(TEXT("Players"), FTDSPlayersRow::StaticStruct());
 }
 
 void UDataTableSubsystem::Deinitialize()

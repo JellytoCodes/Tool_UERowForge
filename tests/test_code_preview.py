@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from test_core import fixture, SAMPLE
-from tabledesk.core import Field, Issue, ToolError, build_plan, execute_plan, load_tables
+from tabledesk.core import Field, Issue, ToolError, build_plan, execute_plan, load_tables, register_project
 from tabledesk.code_preview import build_project_code_preview, code_preview_from_plan
 
 
@@ -56,12 +56,13 @@ class WholeCodePreviewTests(unittest.TestCase):
         for doc in preview.documents:
             self.assertEqual(doc.text, (self.project.root / doc.relative_path).read_bytes().decode('utf-8-sig'))
 
-    def test_preview_equals_v021_expected_cpp(self):
-        # UI-only revision must not silently change Unreal APIs or generator output.
-        preview = build_project_code_preview(self.project, self.tables)
-        expected = SAMPLE.parent / 'expected'
+    def test_preview_equals_shipped_sample_cpp(self):
+        # Use the real sample as the single source for shipped output examples.
+        root = SAMPLE.parent.parent
+        project = register_project(root / 'TableDeskSample.uproject')
+        preview = build_project_code_preview(project, self.tables)
         for doc in preview.documents:
-            self.assertEqual(doc.text, (expected / doc.filename).read_text(encoding='utf-8'))
+            self.assertEqual(doc.text, (root / doc.relative_path).read_text(encoding='utf-8'))
 
     def test_fresh_preview_has_no_filesystem_side_effects(self):
         before = self.snapshot()

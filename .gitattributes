@@ -12,5 +12,13 @@
 *.png binary
 *.xlsx binary
 
+
+# Sample source and generated manifests must stay byte-stable on Windows clones.
+*.cs text eol=lf
+*.ini text eol=lf
+*.uproject text eol=lf
+*.uasset binary
+*.umap binary
+
 # Preserve historical fixture bytes: ownership hashes depend on them.
 tests/fixtures/** -text
