@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "tables": {
+    "Players": {
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "MaxHP",
+          "type": "Int"
+        },
+        {
+          "name": "MoveSpeed",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ],
+      "json_relative": "DataTable/Players.json",
+      "json_sha256": "b684f6701a802b118bdb43df38940f225bba0659ece7c3e8ee39a4f032a18ae8",
+      "row_keys": [
+        "Player_001",
+        "Player_002",
+        "Player_003"
+      ],
+      "asset_path": "/Game/DataTables/DT_Players",
+      "block_sha256": "ac5dfeabc99b21c3b57a19b8a48c21d892f1e1385809513ff98a70529ef5c1b9"
+    },
+    "Items": {
+      "schema": [
+        {
+          "name": "RawName",
+          "type": "String"
+        },
+        {
+          "name": "Name",
+          "type": "Name"
+        },
+        {
+          "name": "ID",
+          "type": "Int"
+        },
+        {
+          "name": "Weight",
+          "type": "Float"
+        },
+        {
+          "name": "bEnabled",
+          "type": "Bool"
+        }
+      ],
+      "json_relative": "DataTable/Items.json",
+      "json_sha256": "2cb003aed6d87d298dd19b212085d46cff7f66d3bcbdcabd5dcd89201ba01663",
+      "row_keys": [
+        "Item_001",
+        "Item_002",
+        "Item_003"
+      ],
+      "asset_path": "/Game/DataTables/DT_Items",
+      "block_sha256": "7cbdd17bc0cdb6406ca7942cd8ed4217d9a5827c81b706af44b501eaf196dcc4"
+    }
+  },
+  "prefix": "OB",
+  "module": "OperationBreakpoint",
+  "managed_files": {
+    "Source/OperationBreakpoint/Public/Data/DataTableSubsystem.h": "69ea3d948acb95ba84bcda517a2f2eaa642fea4529d2d492d42a6bff6a4997c5",
+    "Source/OperationBreakpoint/Private/Data/DataTableSubsystem.cpp": "45e607ee35d469513da07223d2bdadf22d4c66699219d462c6d0dbc350d954ec"
+  },
+  "generator_revision": 2
+}
