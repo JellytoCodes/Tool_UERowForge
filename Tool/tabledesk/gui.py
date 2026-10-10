@@ -31,6 +31,12 @@ WHITE = "#FFFFFF"
 LINE = "#DCE3EC"
 
 
+def readme_path() -> Path:
+    """README lives at repository root in source; at resource root in a bundle."""
+    root = resource_root()
+    return root / "README.md" if getattr(sys, "frozen", False) else root.parent / "README.md"
+
+
 def open_path(path: Path) -> None:
     if not path.exists():
         raise ToolError(f"아직 생성되지 않은 경로입니다: {path}")
@@ -302,7 +308,7 @@ class App:
         toolbar.pack(fill="x", pady=(0, 14))
         ttk.Button(toolbar, text="+  프로젝트 추가", style="Accent.TButton", command=lambda: self.perform(self.add_project)).pack(side="left")
         ttk.Button(toolbar, text="변환 UI 데모", command=lambda: self.perform(self.demo)).pack(side="left", padx=9)
-        ttk.Button(toolbar, text="사용 설명서", command=lambda: self.perform(lambda: open_path(resource_root() / "README.md"))).pack(side="right")
+        ttk.Button(toolbar, text="사용 설명서", command=lambda: self.perform(lambda: open_path(readme_path()))).pack(side="right")
         self.project_tree = ttk.Treeview(self.body, columns=("project", "path", "prefix"), show="headings", selectmode="browse")
         for col, label, width in (("project", "프로젝트", 240), ("path", "연결된 프로젝트 폴더", 600), ("prefix", "접두사", 90)):
             self.project_tree.heading(col, text=label, anchor="w")
@@ -360,7 +366,7 @@ class App:
                          "Modules": [{"Name": "OperationBreakpoint", "Type": "Runtime"}]}).encode("utf-8"))
             atomic_write(source / "OperationBreakpoint.Build.cs", b"// Conversion-only fixture. NOT a buildable project.\n")
         project = self.registry.add(register_project(uproject))
-        sample = str(resource_root() / "Samples" / "TableDeskSample" / "Excel" / "TableTemplate.xlsx")
+        sample = str(resource_root() / "resources" / "TableTemplate.xlsx")
         # This disposable UI demo always uses the shipped template. Do not keep
         # stale template paths from earlier installations alongside the new one.
         project.sources = [sample]
@@ -704,7 +710,7 @@ class App:
         path = filedialog.asksaveasfilename(title="엑셀 템플릿 저장", defaultextension=".xlsx", initialfile="TableTemplate.xlsx",
                                           filetypes=[("Excel workbook", "*.xlsx")], parent=self.root)
         if path:
-            source = resource_root() / "Samples" / "TableDeskSample" / "Excel" / "TableTemplate.xlsx"
+            source = resource_root() / "resources" / "TableTemplate.xlsx"
             if Path(path).resolve() == source.resolve():
                 return
             shutil.copyfile(source, path)

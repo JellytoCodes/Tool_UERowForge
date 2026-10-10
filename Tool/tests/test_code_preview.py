@@ -2,6 +2,7 @@
 import copy
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -56,10 +57,12 @@ class WholeCodePreviewTests(unittest.TestCase):
         for doc in preview.documents:
             self.assertEqual(doc.text, (self.project.root / doc.relative_path).read_bytes().decode('utf-8-sig'))
 
-    def test_preview_equals_shipped_sample_cpp(self):
-        # Use the real sample as the single source for shipped output examples.
-        root = SAMPLE.parent.parent
-        project = register_project(root / 'TableDeskSample.uproject')
+    def test_preview_matches_output_after_project_is_moved(self):
+        # A user's project can live anywhere; no bundled UE sample is required.
+        self.generate()
+        root = Path(self.temp.name) / 'another checkout'
+        shutil.copytree(self.project.root, root)
+        project = register_project(root / 'OperationBreakpoint.uproject')
         preview = build_project_code_preview(project, self.tables)
         for doc in preview.documents:
             self.assertEqual(doc.text, (root / doc.relative_path).read_text(encoding='utf-8'))

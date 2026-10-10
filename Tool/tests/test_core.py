@@ -11,7 +11,7 @@ from tabledesk.core import (Field, MARKER, Project, Registry, Table, ToolError, 
     register_project, relative_dir, scoped)
 from tabledesk.xlsx_reader import Sheet, SpecialCell, WorkbookError, read_xlsx
 
-SAMPLE = Path(__file__).resolve().parents[1] / "Samples" / "TableDeskSample" / "Excel" / "TableTemplate.xlsx"
+SAMPLE = Path(__file__).resolve().parents[1] / "resources" / "TableTemplate.xlsx"
 
 
 def fixture(root: Path) -> Project:

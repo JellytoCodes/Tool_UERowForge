@@ -127,15 +127,12 @@ class GetterTests(unittest.TestCase):
         ini = next(w.content for w in registration.writes if w.label == "런타임 등록 설정")
         self.assertIn(b"Players=/Game/DataTables/DT_Players.DT_Players", ini)
 
-    def test_sample_outputs_match_current_generator(self):
-        sample = Path(__file__).parents[1] / "Samples/TableDeskSample"
-        copied = Path(self.tmp.name) / "RealSample"
-        shutil.copytree(sample, copied, ignore=shutil.ignore_patterns(
-            "Binaries", "Intermediate", "Saved", "DerivedDataCache", ".vs"))
-        project = register_project(copied / "TableDeskSample.uproject")
-        tables, issues = load_tables([copied / "Excel/TableTemplate.xlsx"])
-        self.assertFalse(issues)
-        plan = build_plan(project, tables)
+    def test_converted_files_stay_unchanged_in_another_checkout(self):
+        self.generate()
+        copied = Path(self.tmp.name) / "different checkout"
+        shutil.copytree(self.project.root, copied)
+        project = register_project(copied / "OperationBreakpoint.uproject")
+        plan = build_plan(project, self.tables)
         for task in plan.writes:
             self.assertEqual(task.path.read_bytes(), task.content, task.path.name)
         self.assertFalse(plan.changed)

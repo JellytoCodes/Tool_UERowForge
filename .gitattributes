@@ -7,7 +7,7 @@
 *.h text eol=lf
 *.cpp text eol=lf
 # Preserve shipped batch files byte-for-byte (already CRLF).
-*.bat -text
+*.bat -text whitespace=cr-at-eol
 *.ps1 text eol=crlf
 *.png binary
 *.xlsx binary
@@ -21,4 +21,4 @@
 *.umap binary
 
 # Preserve historical fixture bytes: ownership hashes depend on them.
-tests/fixtures/** -text
+Tool/tests/fixtures/** -text

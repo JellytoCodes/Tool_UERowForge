@@ -26,9 +26,9 @@ Thumbs.db
 .tabledesk-local/
 
 # Do NOT ignore generated ownership manifests globally.
-# tests/fixtures/**/.tabledesk-manifest.json must remain tracked.
+# Tool/tests/fixtures/**/.tabledesk-manifest.json must remain tracked.
 
-# Unreal sample: keep source, config, workbook, DataTable JSON/assets and manifests.
+# User-owned Unreal samples: track source/content; exclude local build artifacts.
 Samples/**/Binaries/
 Samples/**/Intermediate/
 Samples/**/Saved/

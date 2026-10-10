@@ -41,6 +41,9 @@ def main():
         with patch('tabledesk.gui.messagebox.showerror', side_effect=lambda *a, **k: errors.append(a)), \
              patch('tabledesk.gui.messagebox.showinfo', return_value=None):
             root.update()
+            with patch('tabledesk.gui.open_path') as open_help:
+                click(root, "사용 설명서")
+                open_help.assert_called_once_with(ROOT.parent / "README.md")
             app.demo()
             limit = time.monotonic() + 10
             while app.busy and time.monotonic() < limit:
@@ -48,6 +51,10 @@ def main():
                 time.sleep(0.03)
             root.update()
             assert not app.busy, "Excel load did not finish"
+            exported = Path(tmp) / "template export.xlsx"
+            with patch('tabledesk.gui.filedialog.asksaveasfilename', return_value=str(exported)):
+                app.save_template()
+            assert exported.read_bytes() == (ROOT / "resources/TableTemplate.xlsx").read_bytes()
             assert len(app.tables) == 2
             assert len(app.table_tree.get_children()) == 2
             assert len(app.data_tree.get_children()) == 3
@@ -232,7 +239,7 @@ def main():
                 time.sleep(0.03)
             root.update()
             assert not app.busy and not errors, errors
-            assert app.project.sources == [str(ROOT / "Samples/TableDeskSample/Excel/TableTemplate.xlsx")]
+            assert app.project.sources == [str(ROOT / "resources/TableTemplate.xlsx")]
             shot_dir = os.environ.get("TABLEDESK_SCREENSHOTS")
             if shot_dir:
                 from PIL import ImageGrab

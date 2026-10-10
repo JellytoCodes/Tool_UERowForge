@@ -33,7 +33,7 @@
 
 ## 현재 동작과 다음 변경
 
-**현재 일반 변환은 INI를 쓰지 않는다.** `runtime_registration.py`의 등록은 `unreal_runner.py`에서 에셋 전체 저장 성공 후 수행한다.
+**현재 일반 변환은 INI를 쓰지 않는다.** `Tool/tabledesk/runtime_registration.py`의 등록은 `Tool/tabledesk/unreal_runner.py`에서 에셋 전체 저장 성공 후 수행한다.
 **TD-001(사전 예정 경로 등록)은 미구현**이다. 이를 구현하지 않고 문서만 완료로 바꾸지 않는다.
 
 TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 에셋 준비 상태와 분리하는 작업이다.
@@ -47,23 +47,24 @@ TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 
 
 | 위치 | 역할 |
 |---|---|
-| `main.py`, `tabledesk/gui.py` | 진입점·UI |
-| `tabledesk/xlsx_reader.py`, `tabledesk/core.py` | 엑셀 읽기·검증·경로·코드/JSON 계획·manifest·파일 보호 |
-| `tabledesk/subsystem_codegen.py`, `tabledesk/code_preview.py` | Subsystem 생성·전체 코드 미리보기 |
-| `tabledesk/runtime_registration.py`, `tabledesk/unreal_runner.py`, `tabledesk/unreal_bridge.py` | INI 등록·외부 UE 실행·엔진 내부 에셋 작업 |
-| `tests/`, `scripts/gui_smoke.py` | 회귀 테스트·GUI 테스트 |
+| `Tool/main.py`, `Tool/tabledesk/gui.py` | 진입점·UI |
+| `Tool/tabledesk/xlsx_reader.py`, `Tool/tabledesk/core.py` | 엑셀 읽기·검증·경로·코드/JSON 계획·manifest·파일 보호 |
+| `Tool/tabledesk/subsystem_codegen.py`, `Tool/tabledesk/code_preview.py` | Subsystem 생성·전체 코드 미리보기 |
+| `Tool/tabledesk/runtime_registration.py`, `Tool/tabledesk/unreal_runner.py`, `Tool/tabledesk/unreal_bridge.py` | INI 등록·외부 UE 실행·엔진 내부 에셋 작업 |
+| `Tool/tests/`, `Tool/tests/gui_smoke.py` | 회귀 테스트·GUI 테스트 |
 
-`tests/fixtures/v020`은 원본 v0.2.0 생성물을 보존한 이관 입력이다. 현재 생성 예시로 수정하거나 게임에 복사하지 않는다.
-실제 소스 샘플은 **`Samples/TableDeskSample` (UE 5.8)** 하나로 관리한다. `Excel/TableTemplate.xlsx`가 템플릿의 유일한 원본이다.
-샘플의 행 헤더·Subsystem·JSON·manifest는 실제 생성기로 만든다. 수기 소비 코드는 `TableDeskSampleGameMode`로 분리한다.
-샘플은 Source-only이며 에셋/빌드/실행 검증 완료를 가장하지 않는다. TD-001을 샘플 코드에서 몰래 우회해 구현하지 않는다.
-`--demo`는 기존 변환 UI용 모형을 계속 사용한다. 실제 UE 샘플과 혼동하지 않는다.
-샘플 바이너리/캐시를 Git이나 EXE 번들에 넣지 않는다. build_windows.bat은 샘플의 Excel 하위 폴더만 포함한다.
-fixture 출처와 구버전 문서 원문은 기존 Git 이력에 남아 있다.
+`Tool/tests/fixtures/v020`은 원본 v0.2.0 생성물을 보존한 이관 입력이다. 현재 생성 예시로 수정하거나 게임에 복사하지 않는다.
+템플릿 엑셀의 유일한 원본은 **`Tool/resources/TableTemplate.xlsx`**다. 앱·데모·테스트·EXE가 모두 이를 사용한다.
+**`Samples`는 사용자가 UE 5.8 프로젝트를 직접 만들어 넣는 곳이다.** 승인 없이 `.uproject`나 샘플 C++/에셋을 생성하지 않는다.
+테스트와 앱이 특정 샘플 프로젝트명/모듈명에 의존하면 안 된다. `--demo`는 로컬 임시 모형만 사용하는 별도 기능이다.
+사용자 샘플의 바이너리/캐시를 Git이나 EXE 번들에 넣지 않는다. 샘플을 임의 수정/이동/삭제하지 않는다.
+루트는 `Tool`, `Samples`, 기존 문서/라이선스/Git 설정으로 유지한다. 도구용 폴더는 `Tool` 아래에 둔다.
+`scripts`, 별도 화면 캡처/샘플 생성 코드/문서 폴더를 루트에 다시 늘리지 않는다.
+fixture 출처와 구버전 문서는 기존 Git 이력에 남아 있다.
 
 작업 전 `git status`로 사용자 변경을 확인한다. 요청 범위만 최소 수정하고 기능 변경 시 테스트와 README 현황을 함께 갱신한다.
 테스트 명령은 README의 검증 절에 있다. GUI 변경은 GUI smoke를 추가 확인한다.
-문서 경로를 바꾸면 GUI의 `사용 설명서` 버튼과 `build_windows.bat`의 번들 경로도 확인한다.
+문서 경로를 바꾸면 GUI의 `사용 설명서` 버튼과 `Tool/build_windows.bat`의 번들 경로도 확인한다.
 
 보고는 변경 내용·실제 테스트 결과·미검증 범위만 간단히 적는다. 새 문서 수를 성과로 취급하지 않는다.
 원격 공개·강제 push·기존 이력 교체·릴리스 게시·실사용 프로젝트 대량 변경은 임의로 진행하지 않는다.

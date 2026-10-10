@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: Tool
+
 jobs:
   tests:
     name: ${{ matrix.os }} / Python ${{ matrix.python }}
@@ -35,9 +39,9 @@ jobs:
       - name: Unit tests (not Unreal compilation)
         run: python -m unittest discover -s tests -v
       - name: Validate sample workbook
-        run: python main.py --validate Samples/TableDeskSample/Excel/TableTemplate.xlsx
+        run: python main.py --validate resources/TableTemplate.xlsx
       - name: Compile Python sources
-        run: python -m compileall -q main.py tabledesk tests scripts
+        run: python -m compileall -q main.py tabledesk tests
 
   gui-smoke:
     name: Linux Tk GUI smoke (not Windows / Unreal)
@@ -52,4 +56,4 @@ jobs:
       - name: Install display and system Tk
         run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
       - name: Exercise the UI
-        run: xvfb-run -a /usr/bin/python3 scripts/gui_smoke.py
+        run: xvfb-run -a /usr/bin/python3 tests/gui_smoke.py
