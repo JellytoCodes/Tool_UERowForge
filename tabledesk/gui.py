@@ -302,7 +302,7 @@ class App:
         toolbar.pack(fill="x", pady=(0, 14))
         ttk.Button(toolbar, text="+  프로젝트 추가", style="Accent.TButton", command=lambda: self.perform(self.add_project)).pack(side="left")
         ttk.Button(toolbar, text="샘플로 둘러보기", command=lambda: self.perform(self.demo)).pack(side="left", padx=9)
-        ttk.Button(toolbar, text="사용 설명서", command=lambda: self.perform(lambda: open_path(resource_root() / "README_KO.md"))).pack(side="right")
+        ttk.Button(toolbar, text="사용 설명서", command=lambda: self.perform(lambda: open_path(resource_root() / "README.md"))).pack(side="right")
         self.project_tree = ttk.Treeview(self.body, columns=("project", "path", "prefix"), show="headings", selectmode="browse")
         for col, label, width in (("project", "프로젝트", 240), ("path", "연결된 프로젝트 폴더", 600), ("prefix", "접두사", 90)):
             self.project_tree.heading(col, text=label, anchor="w")

@@ -1,47 +1,75 @@
 # UE TableDesk
 
-**엑셀에서 Unreal DataTable용 JSON·행 구조체·관리 서브시스템을 생성하는 경량 데스크톱 도구.**
+엑셀에서 Unreal DataTable용 JSON·행 구조체·관리 서브시스템을 생성하는 Python/Tkinter 도구입니다.
+프로그램 하나에 여러 프로젝트를 등록하며, 대상 프로젝트 안에 도구를 설치하지 않습니다.
 
-Python + Tkinter 기반의 공용 프로그램 하나에 여러 Unreal 프로젝트를 등록합니다. 기획자는 엑셀을 원본으로 관리하고, 도구가 반복적인 데이터 변환과 코드를 생성합니다. 프로젝트마다 도구를 복사하지 않습니다.
+**v0.2.2 / generator revision 3 / 프로토타입.** 문서와 설명서 연결만 정리했으며 변환 규칙은 그대로입니다.
+코드를 수정하는 작업자는 [AGENTS.md](AGENTS.md)를 확인하세요. 사용법과 남은 작업은 이 문서에서 관리합니다.
 
-**현재 앱: v0.2.2 · 생성기 리비전: 3 · 상태: 프로토타입**
+## 실행
 
-> 이 저장소 정리에서는 앱 기능을 변경하지 않았습니다. `.uasset` 생성은 이미 코드가 있는 **실험 기능**이며, 실제 Unreal 실행 검증은 끝나지 않았습니다. **에셋 생성 전 예정 경로 등록은 아직 미구현**입니다.
-
-## 시작하기
-
-Python 3.10 이상과 Tkinter가 필요합니다. 앱 실행에 필요한 별도 pip 패키지는 없습니다.
+Python 3.10 이상과 Tkinter가 필요하며, 앱 실행용 외부 패키지는 없습니다.
 
 ```powershell
-python main.py
+python main.py         # 일반 실행; Windows에서는 run.bat도 가능
+python main.py --demo  # 변환 테스트용 모형 프로젝트; run_demo.bat과 동일
 ```
 
-Windows에서는 `run.bat`으로 실행해도 됩니다. 실제 프로젝트를 건드리지 않고 확인하려면:
+데모는 실제 Unreal 프로젝트가 아니므로 빌드·에셋 반영에 사용하지 않습니다.
+EXE가 필요해지면 Windows에서 아래 명령으로 만들고 `dist/UETableDesk/` **폴더 전체**를 배포합니다.
+이 패키지에는 미리 빌드한 EXE가 없으며 Windows 빌드·실행은 아직 미검증입니다.
 
 ```powershell
-python main.py --demo
+py -3 -m pip install pyinstaller
+.\build_windows.bat
 ```
 
-데모는 파일 변환용 모형 프로젝트입니다. 실제 Unreal 프로젝트로 빌드하거나 에셋 반영에 사용하지 않습니다.
+## 사용법
 
-프로젝트 폴더 등록 → 대상 모듈·접두사 설정 → 엑셀 불러오기 → 검증/미리보기 → 선택 항목 변환 순서입니다. 자세한 입력 규격과 이전 버전 이관 방법은 [사용 설명서](README_KO.md)를 참고하세요.
+**프로젝트 추가 → `.uproject` 폴더 선택 → 모듈·접두사·하위 경로 설정 → 엑셀 불러오기 → 검증 → 선택 항목 변환.**
+최종 확인 창에서 파일 경로와 코드 변경점을 확인한 뒤 저장합니다. 엑셀을 수정한 뒤에는 `다시 읽기 / 검증`을 누르세요.
 
-## 현재 구현과 남은 작업
+프로젝트 루트는 작업 화면에서 고정되며 출력 하위 경로만 지정합니다. 엑셀은 프로젝트 밖에서 불러와도 됩니다.
+등록 해제는 앱의 목록만 제거하며 프로젝트 파일은 삭제하지 않습니다.
+현재는 `Source/<Module>/<Module>.Build.cs`가 있는 C++ 프로젝트 모듈만 지원합니다.
 
-| 영역 | v0.2.2 현재 상태 |
-|---|---|
-| 여러 프로젝트 등록·전환·등록 해제 | 구현. 등록 해제는 실제 프로젝트 파일을 삭제하지 않음 |
-| `.xlsx` 읽기·검증·JSON 출력 | 구현. 시트 하나를 테이블 하나로 처리 |
-| 행 구조체·`UDataTableSubsystem` 생성 | 구현. 테이블별 private 포인터 + public Getter |
-| 데이터/JSON 개별 미리보기, C++ 파일 전체 미리보기 | 구현 |
-| 파일 소유권·해시·백업·부분 선택 변환 | 구현. 일부 파일의 실패 복구는 원자적 트랜잭션 보장이 아님 |
-| `.uasset` 생성·갱신·저장 | 실험 코드 존재. 먼저 해당 Editor C++ 빌드가 필요 |
-| 런타임 INI 등록 | **UE 에셋 반영 전체 성공 후에만** 자동 등록 |
-| 코드·JSON 변환만으로 예정 에셋 경로 등록 | **미구현. 다음 작업 TD-001** |
-| 자동 C++ 빌드 / 자동 쿠킹 설정 | 미구현 |
-| Windows EXE | `build_windows.bat` 제공. 빌드·실행 검증 및 EXE 배포는 별도 |
+### 엑셀 규격
 
-## 생성 규칙
+[샘플 엑셀](examples/TableTemplate.xlsx)을 복사해 사용하세요. **시트 하나가 테이블 하나**이며 파일 여러 개를 불러올 수 있습니다.
+`_Guide`처럼 `_`로 시작하는 시트는 설명용입니다.
+
+| 행 | A | B | C | D | E |
+|---|---|---|---|---|---|
+| 1 | TableName | Players | 빈 칸 | SubPath | 빈 칸 |
+| 2 | RowName | RawName | Name | ID | … |
+| 3 | RowKey | String | Name | Int | … |
+| 4 이후 | Player_001 | 기본 플레이어 | PlayerBasic | 1 | … |
+
+E1은 선택적 추가 하위 경로이며 D1/E1은 생략할 수 있습니다. 앱에서 저장한 경로가 엑셀보다 우선합니다.
+기본값은 **빈 문자열**입니다. `Null`, `None`, `(없음)`을 직접 입력하지 않습니다.
+
+| 타입 | C++ | 빈 셀 |
+|---|---|---|
+| RowKey | 행 키; 일반 멤버로 생성하지 않음 | 오류 |
+| String / FString | FString | 빈 문자열 |
+| Name / FName | FName | NAME_None |
+| Int / int32 | int32 | 오류 |
+| Float | float | 오류 |
+| Bool | bool | 오류 |
+
+타입명은 대소문자를 구분하지 않습니다. Bool은 TRUE/FALSE 또는 1/0, 문자열·Name·행 키는 텍스트 셀로 입력합니다.
+첫 컬럼은 `RowName / RowKey`로 고정합니다. `RawName`은 일반 필드이며 `Name` 필드와 행 키는 별개입니다.
+테이블/필드명은 영문으로 시작하는 영문·숫자·밑줄 조합, 행 키는 영문·숫자·밑줄·하이픈 1~128자입니다.
+예약 이름과 대소문자만 다른 중복은 차단하며 행 키 `None`은 사용할 수 없습니다.
+
+**미지원:** xls/xlsm, 수식, 날짜/시간, 병합 셀, 배열, Enum, FText, 중첩 구조체, 에셋 참조.
+수식은 값으로 붙여넣은 뒤 사용하세요. 빈 테이블로 기존 데이터를 지우는 작업은 지원하지 않습니다.
+입력 상한은 파일 32 MiB, 압축 해제 합계 96 MiB, 시트 XML 32 MiB, 전체 비어 있지 않은 셀 250,000개,
+테이블당 50,000행/128열입니다. 화면의 200행 미리보기 제한과 달리 JSON에는 전체 검증 데이터를 저장합니다.
+
+### 출력과 미리보기
+
+접두사 `OB`, 모듈 `OperationBreakpoint`를 사용한 기본 경로입니다.
 
 ```text
 OperationBreakpoint/
@@ -50,65 +78,99 @@ OperationBreakpoint/
 │  │  ├─ OBStructTypes.h
 │  │  ├─ DataTableSubsystem.h
 │  │  └─ .tabledesk-manifest.json
-│  └─ Private/Data/
-│     └─ DataTableSubsystem.cpp
-├─ DataTable/
-│  ├─ Players.json
-│  └─ Items.json
-└─ Content/DataTables/
-   ├─ DT_Players.uasset    # 별도 에셋 반영 단계
-   └─ DT_Items.uasset
+│  └─ Private/Data/DataTableSubsystem.cpp
+├─ DataTable/Players.json
+└─ Content/DataTables/DT_Players.uasset  # 별도 에셋 반영 단계
 ```
 
-추가 하위 경로는 **빈 값이 기본**입니다. 접두사 `OB`는 예시이며 행 헤더·행 구조체에만 적용합니다. 관리 클래스명은 `UDataTableSubsystem`으로 고정합니다.
+추가 하위 경로는 기본적으로 없습니다. `Player → DT_Player`, `Players → DT_Players`이며 이름을 임의 변형하지 않습니다.
+행 필드는 `BlueprintReadOnly + Category`, 관리 클래스는 `UDataTableSubsystem : public UGameInstanceSubsystem`으로 고정합니다.
+서브시스템은 테이블마다 private `TObjectPtr<UDataTable>`와 public `Get<Table>Table()` 하나를 생성합니다.
+전체 출력 예시는 [examples/expected](examples/expected)에 있습니다.
 
-```cpp
-// 행 필드: BP 읽기 허용, 편집/쓰기 지정자는 생성하지 않음
-UPROPERTY(BlueprintReadOnly, Category = "Players")
-int32 ID = 0;
+**데이터/JSON은 개별 테이블**, **C++는 공통 파일 세 개 전체**를 보여줍니다.
+공통 미리보기는 정상 입력 전체와 기존 관리 테이블을 합치며 테이블 선택에 따라 바뀌지 않습니다.
+실제 변환은 선택한 입력과 기존 보존분을 사용하므로 **최종 확인 창이 실제 저장 결과의 기준**입니다.
+미선택 테이블은 삭제하지 않고, 데이터만 바뀌면 동일한 C++는 다시 저장하지 않습니다.
 
-// UDataTableSubsystem 내부
-public:
-    UFUNCTION(BlueprintPure, Category = "DataTable")
-    UDataTable* GetPlayersTable() const { return PlayersTable.Get(); }
+Getter는 공유 원본 객체를 반환합니다. 호출 측에서 null·행 없음 처리와 원본 변경 금지 규칙을 지키세요.
+행 타입을 쓰는 C++ 파일은 `Data/OBStructTypes.h`를 직접 include해야 합니다.
+BP는 Getter → 유효성 확인 → 엔진 행 조회 노드를 사용하는 방향이며, 동적 테이블의 출력 행 타입 연결은 실제 UE 검증 대상입니다.
+현재 체력 같은 런타임 상태는 마스터 테이블과 분리하고, 재임포트·종료를 넘겨 사용할 행 값은 복사하세요.
 
-private:
-    UPROPERTY(Transient)
-    TObjectPtr<UDataTable> PlayersTable = nullptr;
-```
+## 에셋·빌드·등록: 현재 가능한 범위
 
-Getter는 공유 원본 객체를 반환합니다. 멤버 재대입만 private으로 제한하며 **원본 내용의 불변성은 보장하지 않습니다.** 행 조회와 실패 처리는 호출 측에서 담당합니다.
+| 작업 | 현재 동작 |
+|---|---|
+| 일반 변환 | JSON·C++·생성 이력 생성. **INI는 쓰지 않음** |
+| 값 수정·같은 구조의 행 추가/삭제 | 해당 변경 때문에 C++ 재빌드 불필요 |
+| 새 테이블·컬럼·타입 등 코드 변경 | 에셋 반영 전에 해당 코드의 Editor 타깃 빌드 필요 |
+| UE 에셋 반영 | 실험 기능. Row Struct 지정·JSON 입력·생성/갱신·저장 |
+| Subsystem 등록 | **선택 에셋 전체 저장 성공 후에만** `Config/DefaultGame.ini` 갱신 |
+| 사전 예정 경로 등록 / 자동 빌드 / 자동 쿠킹 | 미구현 |
 
-## C++와 에셋의 작업 경계
+실험 기능은 프로젝트 복사본에서 시험하세요. 프로젝트의 Python Editor Script Plugin / Editor Scripting Utilities를 준비하고,
+에디터를 종료한 상태에서 Editor 타깃을 빌드한 다음 프로젝트에 맞는 `UnrealEditor-Cmd.exe`를 설정해 `UE 에셋 반영`을 실행합니다.
+프로젝트 플러그인 활성화, `.Build.cs` 의존성 변경, 엔진 선택·빌드는 앱이 자동 처리하지 않습니다.
+신규 구조체는 **에셋을 생성하는 PC에서도** 빌드된 상태여야 합니다.
 
-**값 수정·행 추가/삭제**는 구조가 같다면 데이터 작업입니다. **테이블·컬럼·타입 변경으로 C++가 바뀌면** Editor 타깃 빌드가 먼저 필요합니다. 에셋은 이름만 기록하는 파일이 아니라 실제 로드된 Row Struct 정보로 생성합니다. [UHT](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-header-tool-for-unreal-engine), [DataTableFactory](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/DataTableFactory?application_version=5.7)
+JSON 임포트 키는 `RowName`이고 기존 데이터를 전체 입력으로 교체합니다. 다른 에셋 종류·다른 Row Struct는 덮어쓰지 않습니다.
+성공 후 INI의 `UETableDesk.DataTables` 구역에 `Players=/Game/DataTables/DT_Players.DT_Players`처럼 등록하고,
+다음 게임 시작 때 로드·행 타입 검사 후 보관합니다. 로드 실패는 로그와 null로 처리하며 자동 재시도하지 않습니다.
 
-장기 방향은 **기획자용 코드·JSON 변환**과 **개발자용 빌드 후 에셋 반영**을 분리하는 것입니다. 수동으로 만든 에셋도 예정 경로만 맞으면 Subsystem에서 읽도록 만들되, 이를 위한 사전 등록 기능은 아직 남은 작업입니다.
+**현재는 같은 경로에 에셋을 수동 생성한 것만으로 INI 등록까지 자동 완료되지는 않습니다.**
+에셋의 부분 저장 후 실패가 가능하며, 전체 롤백·실행 중인 다른 에디터 감지·최신 컴파일 타입 검증을 보장하지 않습니다.
+일반 Reimport 메뉴의 원본 경로 메타데이터와 패키징 시 쿠킹 포함 여부도 별도 확인이 필요합니다.
 
-## 개발·검증
+## 파일 보호·업데이트·Git
+
+생성 파일과 `.tabledesk-manifest.json`을 함께 관리하세요. 수기 파일·이름 충돌·외부 수정은 덮어쓰지 않습니다.
+충돌을 무시하려고 manifest를 지우거나 해시를 고치지 마세요. 경로 설정 변경은 기존 파일의 이동·삭제가 아닙니다.
+백업은 프로젝트 `Saved/TableDesk` 아래에 보관하며 다중 파일의 완전한 원자성은 보장하지 않습니다.
+
+**현재 v0.2.2 사용자는 이번 문서 정리 때문에 재변환·재빌드할 필요가 없습니다.**
+v0.2.0에서 오면 `Find/TryGet` 호출을 Getter 방식으로 직접 교체하고, 행 헤더를 명시적으로 include한 뒤 전체 빌드하세요.
+v0.1.x에서 오면 BP 필드가 읽기 전용으로 바뀌므로 기존 쓰기 노드도 점검하세요.
+이전 `Public/Data/Generated` 경로의 헤더를 옮길 때는 백업·에디터 종료 후 manifest와 함께 옮기고 include를 갱신해야 합니다.
+기존 파일이 있는 대상에는 덮어쓰지 마세요. 되돌릴 때도 생성 파일과 manifest를 같은 시점의 커밋/백업에서 함께 복원합니다.
+상세 구버전 이관 기록은 기존 Git 커밋에 남아 있습니다.
+
+이 ZIP에는 기존 `.git` 이력이 포함돼 있습니다. **새 폴더에 압축을 풀어 Git Extensions에서 여세요.**
+이미 작업 중인 저장소에는 `.git`을 덮어쓰지 말고 필요한 파일 변경만 비교해 반영하세요. 이번 정리는 원격 업로드 작업이 아닙니다.
+
+도구 저장소에는 앱·샘플·테스트를, 게임 저장소에는 팀 엑셀·생성 코드/JSON/에셋·manifest·필요한 INI 변경을 관리합니다.
+로컬 프로젝트 목록은 `%LOCALAPPDATA%/UETableDesk/projects.json`에 저장되며 `TABLEDESK_HOME`으로 변경할 수 있습니다.
+이 설정은 아직 팀 공용으로 동기화되지 않습니다. 개인 경로·로그·백업은 커밋하지 마세요.
+생성물은 바이트 해시로 보호하므로 Git 줄바꿈 변환에도 주의해야 합니다. 기존 파일을 일괄 정규화하지 마세요.
+
+## 다음 작업
+
+| 순서 | 작업 | 완료 기준 |
+|---|---|---|
+| **1 · TD-001** | 예정 경로 등록을 에셋 생성과 분리 | `.uasset` 없이 코드/JSON/INI/manifest 생성, 빌드 후 수동 생성한 에셋도 Subsystem 코드 수정 없이 로드 |
+| 2 · TD-002 | 실제 Unreal 검증 | UHT/C++·BP 타입 연결·에셋 생성/갱신·Getter·레벨 이동·실패 경로 확인 |
+| 3 · TD-003/004/006 | 반영·배포 검증 | 이름이 같은 타입 변경 검출, Reimport 정보 확인, Windows EXE 실행, 패키징 게임에서 테이블 로드 |
+| 4 · TD-005/007 | 협업·실패 처리 | 팀 공용 상대 경로 설정, 다른 clone의 해시 호환, 에디터 동시 실행과 부분 저장 실패 처리 |
+| 보류 · TD-008/009 | 삭제/이동·타입 확장 | 실제 수요가 생긴 뒤 참조 이관·복구·검증 정책과 함께 결정 |
+
+TD 번호는 내부 작업 표기이며 GitHub Issue가 등록됐다는 뜻은 아닙니다.
+**TD-001은 아직 미구현**입니다. 예정 등록과 에셋 준비 완료를 구분하고, INI 변경을 미리 보여준 뒤 적용해야 합니다.
+미선택 테이블·수기 설정·인코딩/줄바꿈을 보존하고, 외부 변경 시 중단하며 구버전 이관/복구를 테스트해야 합니다.
+같은 내용을 다시 쓰지 않고, 잘못된 Row Struct나 누락 에셋은 null과 진단으로 처리하는 조건도 유지합니다.
+별도 명세·로드맵 파일을 다시 늘리지 말고, 세부 작업은 실제 Issue/PR이 생기면 그곳에서 관리합니다.
+
+## 검증
 
 ```powershell
 python -m unittest discover -s tests -v
 python main.py --validate examples/TableTemplate.xlsx
 python -m compileall -q main.py tabledesk tests scripts
+python scripts/gui_smoke.py  # 디스플레이 필요; Linux headless는 xvfb-run -a 사용
 ```
 
-[검증 기록](docs/validation/2026-10-10-repository.md)은 실제 실행 결과와 미검증 항목을 구분합니다. Python 코드 생성 테스트 통과를 Unreal 컴파일 성공으로 간주하지 않습니다. GitHub Actions 설정은 [CI](.github/workflows/ci.yml)에 있으며 원격 실행 결과는 별도입니다.
+이번 문서 정리 후 자동 테스트 144개, 샘플 검증, Linux GUI와 설명서 버튼 점검을 통과했습니다.
+Python 테스트와 실제 Unreal 검증은 별개입니다. Windows·UHT/C++·BP·런타임·에셋·쿠킹은 아직 미검증입니다.
+[CI 설정](.github/workflows/ci.yml)은 유지하며 GitHub에서의 실제 실행 결과는 별도 확인해야 합니다.
+변경 이력은 Git으로 관리하고 별도 CHANGELOG/검증 보고서는 추가하지 않습니다.
 
-## 문서 안내
-
-| 문서 | 용도 |
-|---|---|
-| [PROJECT_SPEC](docs/PROJECT_SPEC.md) | 전체 요구사항·경로·생성 규칙·현재와 목표의 구분 |
-| [DECISIONS](docs/DECISIONS.md) | 왜 이 설계를 선택했는지, 폐기한 대안 |
-| [ROADMAP](docs/ROADMAP.md) | 우선순위와 완료 조건이 있는 다음 작업 |
-| [AGENTS](AGENTS.md) | Codex 등 코드 작업자가 지켜야 할 규칙 |
-| [CONTRIBUTING](CONTRIBUTING.md) | 브랜치·커밋·테스트·리뷰 절차 |
-| [REPOSITORY_HANDOFF](docs/REPOSITORY_HANDOFF.md) | 저장소 도입 상태와 최초 GitHub 연결 절차 |
-| [README_KO](README_KO.md) | v0.2.2 상세 사용법·엑셀 규격·이관 |
-| [ENGINE_CHECKLIST](docs/ENGINE_CHECKLIST.md) | 실제 Unreal 인수 테스트 |
-| [CHANGELOG](CHANGELOG.md) | 버전별 변경 이력 |
-
-대화에서 나온 새 결정은 문서와 Issue에 반영합니다. 구현 완료는 코드·검증 결과가 있는 경우에만 표시합니다.
-
-라이선스는 기존 배포본의 [MIT License](LICENSE.txt)를 유지합니다.
+라이선스는 [MIT](LICENSE.txt)입니다.

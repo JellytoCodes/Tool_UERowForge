@@ -1,67 +1,65 @@
-# UE TableDesk 작업 지침
+# UE TableDesk 개발 규칙
 
-## 먼저 읽을 것
+`README.md`와 작업할 코드·테스트를 읽는다. 현재 앱은 v0.2.2, 생성기 리비전은 3이다.
+**문서는 README.md와 이 파일 두 개만 관리한다.** 사용법/현황/다음 작업은 README, 개발 제약은 여기 둔다.
+별도 명세·로드맵·결정 기록·CHANGELOG·검증 보고서·절차/템플릿 문서를 임의로 만들지 않는다. 이력은 Git, 세부 작업은 실제 Issue/PR에 남긴다.
 
-`README.md` → `docs/PROJECT_SPEC.md` → `docs/DECISIONS.md` → `docs/ROADMAP.md`를 읽고, 작업 대상의 현재 구현을 확인한다. 채팅의 오래된 설계를 그대로 복원하지 않는다. 문서와 코드가 충돌하면 현재 동작과 변경 의도를 분리해 보고한다.
+## 고정 설계
 
-## 유지할 설계
+- Python + Tkinter 공용 앱. 기본 실행은 표준 라이브러리만 사용한다. 새 의존성·프레임워크는 승인 없이 추가하지 않는다.
+- 프로젝트 루트는 연결 후 고정한다. 출력은 허용 기준 폴더 안의 상대 경로만 받는다.
+- 기본 헤더는 `Source/<Module>/Public/Data`, CPP는 `Source/<Module>/Private/Data`, JSON은 `<Project>/DataTable`, 에셋은 `/Game/DataTables`다.
+- 추가 하위 경로는 `""`가 기본이다. 사용자의 기존 경로 설정은 유지한다. 테이블 이름으로 폴더를 자동 분리하지 않는다.
+- 접두사는 `<Prefix>StructTypes.h`와 `F<Prefix><Table>Row`에만 적용한다. API 매크로는 실제 모듈명 기준이다. 테이블명을 단수/복수로 임의 변환하지 않는다.
+- 행은 `USTRUCT(BlueprintType)`와 `FTableRowBase` 상속. 필드는 **`UPROPERTY(BlueprintReadOnly, Category = "<Table>")`**만 생성한다.
+- EditAnywhere/EditDefaultsOnly/BlueprintReadWrite 및 추가 meta UI를 되살리지 않는다. `.generated.h`는 마지막 include이며 직접 생성하지 않는다.
+- 관리 클래스는 **`UDataTableSubsystem : public UGameInstanceSubsystem`**, 파일명은 `DataTableSubsystem.h/.cpp`로 고정한다.
+- 테이블마다 private `UPROPERTY(Transient) TObjectPtr<UDataTable>`와 public `UFUNCTION(BlueprintPure, Category="DataTable") UDataTable* Get<Table>Table() const` 하나만 생성한다.
+- **TMap 저장, Find/TryGet 행 조회 래퍼, Setter, 자체 로드 템플릿을 추가하지 않는다.** 엔진 API의 `LoadObject<UDataTable>` 사용은 금지 대상이 아니다.
+- 공통 로더는 `.cpp` 내부의 `LoadRegisteredTable(const TCHAR*, const UScriptStruct*)` 일반 함수다. 등록 누락·로드 실패·행 타입 검사를 유지한다.
+- 초기화 시 테이블별 동기 로드/보관, 종료 시 참조 정리. Getter는 포인터 반환만 수행한다. Tick/레벨별 재로드/static 싱글턴을 추가하지 않는다.
+- 행 헤더는 Subsystem `.cpp`에서만 include한다. Getter의 공유 원본 반환을 불변성 보장으로 설명하지 않는다.
 
-- 공용 Python/Tkinter 데스크톱 앱. 기본 실행은 표준 라이브러리만 사용한다. 의존성·프레임워크를 추가하려면 먼저 필요성을 제시한다.
-- 프로젝트는 `.uproject` 단위로 등록하고 작업 화면의 루트는 잠근다. 사용자가 수정하는 출력 경로는 허용 기준 폴더 내부의 상대 경로다.
-- 기본 행/Subsystem 헤더 경로는 `Source/<Module>/Public/Data`, CPP는 `Source/<Module>/Private/Data`다. JSON은 `<Project>/DataTable`이다.
-- 테이블별 추가 경로는 `""`이다. 문자열 `Null`/`None`을 기본 경로로 만들지 않는다. 기존 사용자 설정을 강제로 덮어쓰지 않는다.
-- 행은 `USTRUCT(BlueprintType)` 및 `FTableRowBase` 상속을 유지한다. 필드는 **`UPROPERTY(BlueprintReadOnly, Category = "<Table>")`**로 고정한다.
-- 승인 없이 `EditAnywhere`, `EditDefaultsOnly`, `BlueprintReadWrite`, 추가 `meta` UI를 다시 넣지 않는다.
-- 관리 클래스는 **`UDataTableSubsystem : public UGameInstanceSubsystem`** 한 개다. 파일명은 `DataTableSubsystem.h/.cpp`; 프로젝트 접두사를 붙이지 않는다.
-- 테이블마다 private `UPROPERTY(Transient) TObjectPtr<UDataTable>`와 public `UFUNCTION(BlueprintPure, Category="DataTable") UDataTable* Get<Table>Table() const` 하나만 만든다.
-- **TMap 테이블 저장소, `Find<Table>Row`, `TryGet<Table>Row`, 자체 로드 템플릿을 다시 도입하지 않는다.** 엔진 API 자체의 `LoadObject<UDataTable>` 템플릿 사용은 이 금지에 해당하지 않는다.
-- 로더는 `.cpp` 내부의 `LoadRegisteredTable(const TCHAR*, const UScriptStruct*)` 일반 함수로 유지한다. 등록 누락·로드 실패·행 타입 검사는 없애지 않는다.
-- 행 헤더는 Subsystem `.cpp`에서 include한다. Subsystem `.h`가 행 헤더를 다시 전이 include하도록 하지 않는다.
-- Getter는 공유 원본을 반환한다. `BlueprintReadOnly`나 Getter가 원본 전체의 불변성을 보장한다고 설명하지 않는다.
+## UI·파일 보호
 
-## 현재 구현과 목표를 혼동하지 말 것
+데이터/JSON은 포커스 테이블별, C++는 행 헤더/Subsystem 헤더/CPP **전체 파일** 미리보기다.
+공통 미리보기는 정상 입력 전체 + 기존 관리 테이블, 실제 변환은 선택 입력 + 기존 관리 테이블이다.
+테이블 선택 변경이 공통 코드 범위를 바꾸지 않는다. 최종 확인은 실제 저장 결과와 같아야 한다. 미리보기/복사는 읽기 전용이다.
 
-현재 앱은 **v0.2.2**, `GENERATOR_REVISION=3`이다. 소스 배포본이며 실제 Unreal/Windows EXE 검증은 끝나지 않았다.
+경로 정규화·허용 폴더 제한·원본/생성물 해시·백업·복구 시도·미선택 테이블 보존을 유지한다.
+수기 코드·외부 수정·동명 클래스/파일 충돌은 중단한다. manifest 삭제/해시 조작으로 우회하지 않는다.
+생성 포맷 변경은 revision과 이관 테스트를 검토한다. 앱 버전과 generator revision은 별개다.
+이름·경로 변경을 자동 삭제/이동으로 간주하지 않는다. 사용자 C++·BP 참조를 이관했다고 주장하지 않는다.
 
-현재 `runtime_registration.py`는 에셋 반영 전체 성공 후에만 `DefaultGame.ini`를 쓴다. `core.py`의 일반 변환은 이 INI를 쓰지 않는다. **에셋 생성 전 예정 경로 등록(TD-001)은 미구현**이다. 이 작업을 하지 않은 PR에서 이미 지원한다고 문서를 바꾸지 않는다.
+## 현재 동작과 다음 변경
 
-새 C++ 구조체와 Getter를 만들어 놓고 빌드 전 `.uasset`을 정상 생성할 수 있다고 가정하지 않는다. `.uasset` 바이너리를 외부 Python에서 직접 조립하거나 가짜 구조체로 우회하지 않는다. 자동 C++ 빌드/프로젝트 플러그인 활성화/쿠킹 변경은 별도 승인 작업이다.
+**현재 일반 변환은 INI를 쓰지 않는다.** `runtime_registration.py`의 등록은 `unreal_runner.py`에서 에셋 전체 저장 성공 후 수행한다.
+**TD-001(사전 예정 경로 등록)은 미구현**이다. 이를 구현하지 않고 문서만 완료로 바꾸지 않는다.
 
-## UI 불변 조건
+TD-001은 코드/JSON 변환 계획에 INI 예정 경로를 포함하되 실제 에셋 준비 상태와 분리하는 작업이다.
+`.uasset` 없는 상태의 등록, 기존 구역·미선택 테이블·인코딩 보존, 외부 변경 차단, no-op, 구버전 이관/실패 복구를 테스트한다.
+마지막 완료 확인은 빌드 후 같은 경로에 수동 생성한 정상 에셋이 Subsystem 코드 수정 없이 로드되는 실제 UE 테스트다.
 
-테이블 데이터·JSON은 포커스 테이블별 미리보기다. C++는 행 헤더, Subsystem 헤더, Subsystem CPP **전체 파일**이다. 테이블 선택을 바꿔도 공통 코드 범위는 바뀌지 않는다.
+신규 C++ 구조체를 빌드하기 전 에셋 생성이 가능하다고 가정하지 않는다. 가짜 구조체나 외부 Python의 uasset 바이너리 직접 작성으로 우회하지 않는다.
+자동 C++ 빌드·플러그인 활성화·쿠킹 설정 변경은 별도 작업이다. 부분 저장을 전체 롤백으로, Python 테스트를 Unreal 빌드 성공으로 설명하지 않는다.
 
-공통 미리보기는 정상 입력 전체 + 기존 관리 테이블이고, 실제 선택 변환은 선택 입력 + 기존 관리 테이블이다. 최종 확인 화면은 실제 저장 결과를 보여야 한다. 미리보기/복사는 디스크 쓰기를 하지 않는다.
+## 소스 위치·작업 절차
 
-## 파일 보호
+| 위치 | 역할 |
+|---|---|
+| `main.py`, `tabledesk/gui.py` | 진입점·UI |
+| `tabledesk/xlsx_reader.py`, `tabledesk/core.py` | 엑셀 읽기·검증·경로·코드/JSON 계획·manifest·파일 보호 |
+| `tabledesk/subsystem_codegen.py`, `tabledesk/code_preview.py` | Subsystem 생성·전체 코드 미리보기 |
+| `tabledesk/runtime_registration.py`, `tabledesk/unreal_runner.py`, `tabledesk/unreal_bridge.py` | INI 등록·외부 UE 실행·엔진 내부 에셋 작업 |
+| `tests/`, `scripts/gui_smoke.py` | 회귀 테스트·GUI 테스트 |
 
-수기 파일·소유권 없는 생성물·외부 변경은 자동 덮어쓰지 않는다. 해시 검사, 경로 정규화, 프로젝트 및 기준 폴더 내부 제한, 백업, 실패 복구 시도, 미선택 테이블 보존을 유지한다.
+`tests/fixtures/v020`은 원본 v0.2.0 생성물을 보존한 이관 입력이다. 현재 생성 예시로 수정하거나 게임에 복사하지 않는다.
+현재 예시는 `examples/expected`에 둔다. fixture 출처와 구버전 문서 원문은 기존 Git 이력에 남아 있다.
 
-`.tabledesk-manifest.json`은 관리 상태의 일부다. 무시·삭제·빈 파일 재생성으로 충돌을 우회하지 않는다. 생성 형식 변경 시 revision과 이관 테스트를 함께 검토한다. 앱 버전과 generator revision은 별개다.
+작업 전 `git status`로 사용자 변경을 확인한다. 요청 범위만 최소 수정하고 기능 변경 시 테스트와 README 현황을 함께 갱신한다.
+테스트 명령은 README의 검증 절에 있다. GUI 변경은 GUI smoke를 추가 확인한다.
+문서 경로를 바꾸면 GUI의 `사용 설명서` 버튼과 `build_windows.bat`의 번들 경로도 확인한다.
 
-필드/행 키/테이블/경로 변경으로 기존 C++·BP 참조를 자동 이관했다고 주장하지 않는다. 실사용 프로젝트로 첫 테스트를 하지 말고 임시 프로젝트/fixture를 사용한다.
-
-## 작업 절차
-
-작업 전 `git status`로 사용자 변경을 확인한다. 이번 Issue 범위만 수정하고 승인되지 않은 구조 재설계, 전체 포맷팅, unrelated cleanup은 하지 않는다.
-
-```text
-변경 의도 확인 → 해당 코드/테스트 읽기 → 최소 수정 → 회귀 테스트
-→ 문서/CHANGELOG 반영 → diff와 미검증 범위 보고
-```
-
-필수 명령:
-
-```shell
-python -m unittest discover -s tests -v
-python main.py --validate examples/TableTemplate.xlsx
-python -m compileall -q main.py tabledesk tests scripts
-```
-
-GUI 변경이면 디스플레이가 있는 환경에서 `python scripts/gui_smoke.py`도 실행한다. Linux headless에서는 `xvfb-run -a python scripts/gui_smoke.py`를 사용한다. Unreal 테스트는 별도다. 실패·skip·미실행을 숨기지 않는다.
-
-## 보고·외부 작업
-
-한국어 문서/설명은 간결하고 구체적으로 쓴다. `계획`, `구현`, `실행 검증`을 구분한다. 문서/Issue 템플릿 생성만으로 GitHub Issue가 등록되었다고 보고하지 않는다.
-
-저장소 공개 전환, 강제 push, 기존 원격 이력 교체, 릴리스 게시, 사용자 프로젝트 대량 수정은 임의로 진행하지 않는다. 토큰/비밀번호/실사용 원본 데이터를 커밋하지 않는다. 도구 저장소와 대상 Unreal 프로젝트 저장소를 혼동하지 않는다.
+보고는 변경 내용·실제 테스트 결과·미검증 범위만 간단히 적는다. 새 문서 수를 성과로 취급하지 않는다.
+원격 공개·강제 push·기존 이력 교체·릴리스 게시·실사용 프로젝트 대량 변경은 임의로 진행하지 않는다.
+토큰/개인 경로/실사용 데이터를 커밋하지 않는다. 도구 저장소와 대상 게임 저장소를 구분한다.

@@ -1,9 +1,0 @@
-{
-  "protected_baseline_files_unchanged": 41,
-  "yaml_files_parsed": 4,
-  "relative_markdown_links_checked": 28,
-  "missing_links": [],
-  "credential_pattern_matches": [],
-  "source_archive_sha256": "de6d36f805464948b7d52f49089ed603b5c2da76687de2234cc0e784805b90c7",
-  "python": "3.13.5"
-}

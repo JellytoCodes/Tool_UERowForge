@@ -9,7 +9,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-py -3 -m PyInstaller --clean --windowed --onedir --name UETableDesk --add-data "examples:examples" --add-data "README_KO.md:." --add-data "docs:docs" --add-data "CHANGELOG.md:." --add-data "VALIDATION.md:." --add-data "tabledesk/unreal_bridge.py:tabledesk" main.py
+py -3 -m PyInstaller --clean --windowed --onedir --name UETableDesk --add-data "examples:examples" --add-data "README.md:." --add-data "docs:docs" --add-data "tabledesk/unreal_bridge.py:tabledesk" main.py
 if errorlevel 1 (
   echo Packaging failed.
   pause

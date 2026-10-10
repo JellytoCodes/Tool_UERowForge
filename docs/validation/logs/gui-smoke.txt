@@ -1,1 +1,0 @@
-GUI smoke: separate data/code scopes, complete 3-file preview, selection independence, exact confirmation, copy, no preview writes, retained-only preview, stale error clearing/recovery, settings, routes, actual conversion and idempotency — OK
