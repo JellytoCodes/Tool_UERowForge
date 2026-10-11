@@ -739,7 +739,10 @@ class App:
         ttk.Label(frame, text="실제 파일을 쓰기 전에 확인하세요", style="Heading.TLabel").pack(anchor="w", pady=(0, 12))
         note = ttk.Notebook(frame)
         note.pack(fill="both", expand=True)
-        for label, contents in (("출력 계획", plan.summary()), ("C++ 변경점", plan.code_diff())):
+        previews = [("출력 계획", plan.summary()), ("C++ 변경점", plan.code_diff())]
+        if any(w.label == "구버전 INI 정리" for w in plan.writes):
+            previews.append(("구버전 INI 정리", plan.legacy_config_diff()))
+        for label, contents in previews:
             panel, box = text_box(note)
             note.add(panel, text=label)
             set_text(box, contents)
@@ -756,7 +759,7 @@ class App:
         ttk.Button(bottom, text="취소", command=win.destroy).pack(side="right")
         def go():
             win.destroy()
-            self.worker("JSON·행 구조체·서브시스템 코드 생성 중…", lambda: execute_plan(plan), lambda backup: self.converted(plan, backup))
+            self.worker("JSON·C++ 저장 중…", lambda: execute_plan(plan), lambda backup: self.converted(plan, backup))
         ttk.Button(bottom, text=f"{len(plan.changed)}개 파일 생성·갱신", style="Accent.TButton", command=go).pack(side="right", padx=9)
 
     def converted(self, plan: Plan, backup):
@@ -766,22 +769,23 @@ class App:
         self.log(f"변환 완료: {len(plan.tables)}개 테이블, {len(plan.changed)}개 파일. {suffix}")
         if backup:
             self.log("백업: " + str(backup))
-        self.status.set("변환 완료 · " + suffix)
+        self.status.set("JSON·C++ 생성 완료 · 에셋/조회 미검증 · " + suffix)
         self.invalidate_code_preview()
         self.notebook.select(self.log_frame)
-        messagebox.showinfo("파일 변환 완료", f"JSON·행 구조체·DataTableSubsystem.h/.cpp 생성/갱신을 완료했습니다.\n{suffix}\n\n"
-                            ".uasset은 아직 생성하지 않았습니다. UE 에셋 반영 버튼은 별도 단계입니다.", parent=self.root)
+        messagebox.showinfo("파일 변환 완료", f"JSON·행 구조체·DataTableSubsystem.h/.cpp를 저장했습니다.\n{suffix}\n\n"
+                            "예정 에셋 경로는 Subsystem 코드에 생성됩니다. 에셋 준비·조회 성공은 미검증입니다.\n"
+                            ".uasset은 생성하지 않았습니다. 빌드 후 해당 경로에 올바른 DataTable을 준비하세요.", parent=self.root)
 
     def apply_assets(self):
         assert self.project
         plan = build_plan(self.project, self.selected_tables())
         check_engine(plan)
-        message = ("실험 기능: 실제 UE 환경에서 이 배포본의 연동 실행은 아직 검증하지 못했습니다.\n\n"
+        message = ("실험 기능: Editor 빌드와 프로젝트별 에셋 호환성 확인이 필요합니다.\n\n"
                    "1. 행 구조체·서브시스템(.h/.cpp)을 포함한 C++ Editor 타깃 전체 빌드를 완료했습니까?\n"
                    "2. 이 프로젝트를 연 모든 언리얼 에디터를 종료했습니까?\n"
                    "3. Python Editor Script Plugin / Editor Scripting Utilities를 켰습니까?\n\n"
                    "선택한 에셋을 생성하거나 데이터를 교체하고 저장합니다. 기존 에셋은 파일 백업합니다.\n"
-                   "모두 성공하면 Config/DefaultGame.ini의 도구 전용 구역에 경로를 자동 등록합니다.\n"
+                   "Subsystem 코드에 생성한 예정 경로를 사용합니다. INI 등록은 하지 않습니다.\n"
                    "쿠킹 설정은 자동 변경하지 않습니다. 패키징 전 테이블 폴더의 포함 여부를 확인하세요.\n"
                    "여러 에셋 저장 중 실패하면 일부 에셋만 반영될 수 있습니다. 프로젝트 복사본에서 먼저 시험하세요.\n\n"
                    "위 내용을 확인했고 실행하겠습니까?")
@@ -794,8 +798,8 @@ class App:
     def assets_done(self, result):
         self.log("에셋 반영 완료: " + ", ".join(result["saved"]))
         self.status.set(f"에셋 {len(result['saved'])}개 저장 완료")
-        messagebox.showinfo("UE 에셋 반영", "저장 완료:\n" + "\n".join(result["saved"]) + "\n\n런타임 등록: " + result.get("registration_path", "")
-                            + "\n다음 게임 실행부터 로드됩니다. 쿠킹 포함 설정은 별도로 확인하세요.", parent=self.root)
+        messagebox.showinfo("UE 에셋 반영", "저장 완료:\n" + "\n".join(result["saved"])
+                            + "\n\n다음 Play에서 Subsystem 로드·Getter·행 조회를 확인하세요. 쿠킹 포함 설정은 별도입니다.", parent=self.root)
 
     def close(self):
         if self.busy:

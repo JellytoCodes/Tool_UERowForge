@@ -119,6 +119,9 @@ def main():
             app.plan_dialog(build_plan(app.project, app.selected_tables()))
             root.update()
             dialog = current_dialog(root)
+            confirmation = dialog.code_panel.master
+            assert all("INI" not in confirmation.tab(t, "text") for t in confirmation.tabs())
+            assert not (app.project.root / "Config/DefaultGame.ini").exists()
             assert dialog.code_panel.tables_var.get() == app.tables[0].name
             only = "\n".join(d.text for d in dialog.code_panel.documents.values())
             assert "FOBItemsRow" not in only
@@ -200,7 +203,13 @@ def main():
             assert (app.project.root / "Source/OperationBreakpoint/Public/Data/OBStructTypes.h").is_file()
             assert (app.project.root / app.project.subsystem_header_relative).is_file()
             assert (app.project.root / app.project.subsystem_source_relative).is_file()
-            assert not (app.project.root / "Config/DefaultGame.ini").exists()
+            ini = app.project.root / "Config/DefaultGame.ini"
+            assert not ini.exists()
+            cpp = (app.project.root / app.project.subsystem_source_relative).read_text()
+            assert 'TEXT("/Game/DataTables/DT_Players.DT_Players")' in cpp
+            assert 'TEXT("/Game/DataTables/DT_Items.DT_Items")' in cpp
+            assert "에셋/조회 미검증" in app.status.get()
+            assert not list(app.project.root.rglob('*.uasset'))
             assert not build_plan(app.project, app.selected_tables()).changed
             root.update()
             # Opening common code without table selection still shows both files'

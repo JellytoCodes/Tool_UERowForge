@@ -11,10 +11,9 @@ if TYPE_CHECKING:
     from .core import Project, Table
 
 # Compatibility identifiers (including log labels in generated C++) remain
-# byte-identical to v0.2.2: an app rename must not rewrite game project code.
+# stable across product renames; an app rename must not rewrite game project code.
 # The manifest's generator_revision tracks actual output/API changes.
 SUBSYSTEM_MARKER = "// UE TABLEDESK - MANAGED SUBSYSTEM v1"
-RUNTIME_SECTION = "UETableDesk.DataTables"
 
 
 def subsystem_header(project: Project, tables: list[Table]) -> str:
@@ -42,34 +41,32 @@ def subsystem_header(project: Project, tables: list[Table]) -> str:
     return "\n".join(lines + ["};", ""])
 
 
-def subsystem_source(project: Project, tables: list[Table]) -> str:
+def subsystem_source(project: Project, tables: list[Table], object_paths: dict[str, str]) -> str:
     include_path = "/".join(x for x in (project.header_subdir, "DataTableSubsystem.h") if x)
     rows_include = "/".join(x for x in (project.header_subdir, project.header_name) if x)
     lines = [SUBSYSTEM_MARKER,
-             "// Auto-generated. Registration is committed after successful UE asset import.",
+             "// Auto-generated. Create matching DataTable assets at these paths before play.",
              f'#include "{include_path}"', "", f'#include "{rows_include}"',
-             '#include "CoreGlobals.h"', '#include "Misc/ConfigCacheIni.h"',
              '#include "UObject/UObjectGlobals.h"', "",
              "DEFINE_LOG_CATEGORY_STATIC(LogTableDeskData, Log, All);", "",
              "namespace", "{",
-             "    UDataTable* LoadRegisteredTable(const TCHAR* TableName, const UScriptStruct* ExpectedRowStruct)",
-             "    {", "        FString AssetPath;",
-             f'        if (!GConfig || !GConfig->GetString(TEXT("{RUNTIME_SECTION}"), TableName, AssetPath, GGameIni)',
-             "            || AssetPath.IsEmpty())", "        {",
-             '            UE_LOG(LogTableDeskData, Warning, TEXT("Table %s is not registered. Import its asset with TableDesk first."), TableName);',
+             "    UDataTable* LoadTable(const TCHAR* TableName, const TCHAR* AssetPath, const UScriptStruct* ExpectedRowStruct)",
+             "    {", "        if (!AssetPath || !*AssetPath)", "        {",
+             '            UE_LOG(LogTableDeskData, Error, TEXT("Missing generated asset path for %s"), TableName);',
              "            return nullptr;", "        }", "",
-             "        UDataTable* Table = LoadObject<UDataTable>(nullptr, *AssetPath);",
+             "        UDataTable* Table = LoadObject<UDataTable>(nullptr, AssetPath);",
              "        if (!IsValid(Table))", "        {",
-             '            UE_LOG(LogTableDeskData, Error, TEXT("Failed to load %s: %s"), TableName, *AssetPath);',
+             '            UE_LOG(LogTableDeskData, Error, TEXT("Failed to load %s: %s"), TableName, AssetPath);',
              "            return nullptr;", "        }", "",
              "        if (Table->GetRowStruct() != ExpectedRowStruct)", "        {",
-             '            UE_LOG(LogTableDeskData, Error, TEXT("Unexpected row struct for %s: %s"), TableName, *AssetPath);',
+             '            UE_LOG(LogTableDeskData, Error, TEXT("Unexpected row struct for %s: %s"), TableName, AssetPath);',
              "            return nullptr;", "        }", "        return Table;", "    }", "}", "",
              "void UDataTableSubsystem::Initialize(FSubsystemCollectionBase& Collection)", "{",
              "    Super::Initialize(Collection);", "",
-             "    // Small master tables are synchronously loaded once per GameInstance."]
+             "    // Synchronous loads finish before Initialize returns; getters never start a load.",
+             "    // Other GameInstance subsystems consuming these tables in Initialize must declare InitializeDependency<UDataTableSubsystem>()."]
     for table in sorted(tables, key=lambda t: t.name):
-        lines.append(f'    {table.name}Table = LoadRegisteredTable(TEXT("{table.name}"), {table.cpp_name(project.prefix)}::StaticStruct());')
+        lines.append(f'    {table.name}Table = LoadTable(TEXT("{table.name}"), TEXT("{object_paths[table.name]}"), {table.cpp_name(project.prefix)}::StaticStruct());')
     lines += ["}", "", "void UDataTableSubsystem::Deinitialize()", "{"]
     for table in sorted(tables, key=lambda t: t.name):
         lines.append(f"    {table.name}Table = nullptr;")

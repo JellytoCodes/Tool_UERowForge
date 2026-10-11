@@ -70,16 +70,16 @@ class ResourcePathTests(unittest.TestCase):
         self.assertTrue(payload['ok'])
         self.assertEqual(sum(t['rows'] for t in payload['tables']), 6)
 
-    def test_ci_runs_commands_from_tool_directory(self):
-        workflow = (REPO / '.github/workflows/ci.yml').read_text()
-        self.assertIn('working-directory: Tool', workflow)
-        self.assertIn('python main.py --validate resources/TableTemplate.xlsx', workflow)
-        self.assertIn('python -m unittest discover -s tests', workflow)
-        self.assertIn('python3 tests/gui_smoke.py', workflow)
+    def test_readme_verification_runs_commands_from_tools_directory(self):
+        readme = (REPO / 'README.md').read_text(encoding='utf-8')
+        self.assertIn('cd Tools', readme)
+        self.assertIn('python main.py --validate resources/TableTemplate.xlsx', readme)
+        self.assertIn('python -m unittest discover -s tests', readme)
+        self.assertIn('python tests/gui_smoke.py', readme)
         self.assertTrue((TOOL / 'tests/gui_smoke.py').is_file())
 
     def test_old_fixture_line_endings_are_protected_at_new_path(self):
-        self.assertIn('Tool/tests/fixtures/** -text',
+        self.assertIn('Tools/tests/fixtures/** -text',
                       (REPO / '.gitattributes').read_text())
 
 

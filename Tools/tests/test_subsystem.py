@@ -71,19 +71,19 @@ class SubsystemTests(unittest.TestCase):
         self.generate()
         cpp = self.cpp()
         for table in ("Players", "Items"):
-            self.assertIn(f'{table}Table = LoadRegisteredTable(TEXT("{table}"), FOB{table}Row::StaticStruct());', cpp)
+            self.assertIn(f'{table}Table = LoadTable(TEXT("{table}"), TEXT("/Game/DataTables/DT_{table}.DT_{table}"), FOB{table}Row::StaticStruct());', cpp)
             self.assertIn(f"{table}Table = nullptr;", cpp)
-        self.assertIn("LoadRegisteredTable(const TCHAR* TableName, const UScriptStruct* ExpectedRowStruct)", cpp)
+        self.assertIn("LoadTable(const TCHAR* TableName, const TCHAR* AssetPath, const UScriptStruct* ExpectedRowStruct)", cpp)
         self.assertIn("GetRowStruct() != ExpectedRowStruct", cpp)
-        self.assertIn("!GConfig", cpp)
-        self.assertIn("AssetPath.IsEmpty()", cpp)
+        self.assertIn("!AssetPath || !*AssetPath", cpp)
         self.assertIn("!IsValid(Table)", cpp)
         self.assertEqual(cpp.count("return nullptr;"), 3)
         self.assertIn("return Table;", cpp)
         self.assertIn("Super::Initialize(Collection)", cpp)
         self.assertIn("Super::Deinitialize()", cpp)
-        self.assertIn('TEXT("UETableDesk.DataTables")', cpp)
-        self.assertIn("GGameIni", cpp)
+        self.assertNotIn("GGameIni", cpp)
+        self.assertNotIn("GConfig", cpp)
+        self.assertNotIn("ConfigCacheIni", cpp)
         for obsolete in ("template <", "TRow", "LoadRegisteredTable<", "OutRow", "FindRow<"):
             self.assertNotIn(obsolete, cpp)
 
@@ -107,11 +107,12 @@ class SubsystemTests(unittest.TestCase):
         self.assertFalse(plan.code_changed)
         self.assertEqual(previous, [(p.read_bytes(), p.stat().st_mtime_ns) for p in paths])
 
-    def test_path_change_is_not_cpp_change(self):
+    def test_asset_path_change_requires_cpp_rebuild(self):
         self.generate()
         self.project.asset_subdir = "OtherData"
         plan = build_plan(self.project, self.tables)
-        self.assertFalse(plan.code_changed)
+        self.assertTrue(plan.code_changed)
+        self.assertIn('TEXT("/Game/OtherData/DT_Players.DT_Players")', plan.subsystem_preview())
         self.assertTrue(any("출력 경로 변경" in n for n in plan.notes))
 
     def test_paths_mirror_custom_header_subfolder(self):

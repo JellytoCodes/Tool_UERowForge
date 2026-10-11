@@ -347,7 +347,7 @@ class ConversionTests(unittest.TestCase):
         self.project.routes["Players"] = "New/Sub"
         plan = build_plan(self.project, [self.tables[0]])
         self.assertEqual(plan.asset_jobs[0]["asset_path"], "/Game/DataTables/New/Sub/DT_Players")
-        self.assertIn("New/Sub", str(plan.writes[1].path))
+        self.assertIn("New/Sub", plan.writes[1].path.as_posix())
 
     def test_invalid_project_no_module(self):
         self.project.module = "Missing"

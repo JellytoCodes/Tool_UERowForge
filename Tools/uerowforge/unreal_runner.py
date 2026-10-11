@@ -1,12 +1,11 @@
-"""Opt-in Unreal invocation followed by guarded runtime registration. No auto build."""
+"""Opt-in Unreal invocation using paths generated in the subsystem. No auto build."""
 from __future__ import annotations
 import json
 import os
 from pathlib import Path
 import subprocess
 import uuid
-from .runtime_registration import build_registration_plan, commit_registration
-from .core import Plan, ToolError, app_dir, atomic_write, digest, file_lock, inside, json_text
+from .core import Plan, ToolError, app_dir, atomic_write, digest, execute_plan, file_lock, inside, json_text
 
 
 def resource_root() -> Path:
@@ -27,13 +26,13 @@ def check_engine(plan: Plan) -> Path:
         raise ToolError("프로젝트에서 비활성화된 플러그인이 있습니다: " + ", ".join(disabled))
     # Unknown/inherited plugin states are checked again by the engine invocation.
     if plan.changed:
-        raise ToolError("먼저 JSON·C++ 코드 변환을 완료하세요. 현재 원본/설정과 출력 파일이 다릅니다.")
+        raise ToolError("먼저 JSON·C++ 변환을 완료하세요. 현재 원본/설정과 출력 파일이 다릅니다.")
     return cmd
 
 
 def run_assets(plan: Plan, on_log) -> dict:
     cmd = check_engine(plan)
-    registration = build_registration_plan(plan)  # Preflight before UE can modify assets.
+    execute_plan(plan)  # Unchanged plan: check all dependencies before UE modifies assets.
     home = app_dir() / "jobs" / uuid.uuid4().hex
     home.mkdir(parents=True, exist_ok=True)
     job_path, result_path = home / "job.json", home / "result.json"
@@ -79,12 +78,18 @@ def run_assets(plan: Plan, on_log) -> dict:
                         f"이미 저장된 에셋: {result.get('saved', [])}\n"
                         f"결과/로그: {home}\n백업: {result.get('backup', '없음')}")
     try:
-        backup = commit_registration(registration, result.get("saved", []))
+        expected = [j["asset_path"] for j in plan.asset_jobs]
+        saved = result.get("saved", [])
+        if len(saved) != len(expected) or set(saved) != set(expected):
+            raise ToolError("일부 에셋만 저장됐습니다. 코드의 예정 경로는 에셋 저장 성공을 의미하지 않습니다.")
+        for package in expected:
+            asset = inside(plan.project.root, "Content/" + package[6:] + ".uasset")
+            if not asset.is_file():
+                raise ToolError(f"저장 결과의 에셋 파일을 찾지 못했습니다: {asset}")
+        execute_plan(plan)  # No writes; detect code/JSON/manifest changes during import.
     except (OSError, ValueError) as exc:
-        raise ToolError(f"에셋은 저장됐지만 런타임 등록은 완료되지 않았습니다: {exc}\n"
+        raise ToolError(f"에셋 저장 결과/변환 파일 확인 실패: {exc}\n"
                         f"저장된 에셋: {result.get('saved', [])}\n에셋 백업: {result.get('backup', '')}") from exc
-    result["registration_path"] = str(plan.project.root / "Config/DefaultGame.ini")
-    result["registration_backup"] = str(backup) if backup else ""
-    on_log("런타임 등록 완료: " + result["registration_path"])
+    on_log("생성 코드의 예정 경로와 에셋 저장 결과 일치 확인")
     on_log("패키징 쿠킹 규칙은 이번 버전에서 자동 변경하지 않습니다. 생성된 테이블 폴더의 쿠킹 포함 여부를 확인하세요.")
     return result

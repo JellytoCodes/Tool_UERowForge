@@ -1,7 +1,7 @@
 """Run ONLY inside Unreal's Python commandlet, after a full Editor build.
 
-Experimental adapter, checked against Epic's UE 5.7 API docs but not executed
-against a real Unreal installation in the prototype authoring environment.
+Experimental adapter, executed for DataTable creation and reimport in a UE 5.8.3
+sample after an Editor build. Other projects and packaging need separate checks.
 Preflights every table with transient UDataTables before modifying assets.
 Saves are per-asset, not a cross-package transaction. Backups are for recovery.
 """

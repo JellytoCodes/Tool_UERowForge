@@ -24,7 +24,7 @@ MARKER = "// UE TABLEDESK - MANAGED HEADER v1"
 MANIFEST = ".tabledesk-manifest.json"
 DEFAULT_HEADER_SUBDIR = "Data"
 DEFAULT_JSON_SUBDIR = "DataTable"
-GENERATOR_REVISION = 3
+GENERATOR_REVISION = 5
 TYPES = {"string": "String", "fstring": "String", "name": "Name", "fname": "Name",
          "int": "Int", "int32": "Int", "float": "Float", "bool": "Bool", "rowkey": "RowKey"}
 CPP = {"String": ("FString", 'TEXT("")'), "Name": ("FName", "NAME_None"),
@@ -119,6 +119,12 @@ def identifier(value: str, label: str) -> str:
     if value.casefold() in RESERVED:
         raise ToolError(f"{label}: C++ 또는 엔진 예약 이름입니다: {value}")
     return value
+
+
+def asset_object_path(package: str) -> str:
+    if not isinstance(package, str) or not re.fullmatch(r"/Game/(?:[A-Za-z_][A-Za-z0-9_]*/)*[A-Za-z_][A-Za-z0-9_]*", package):
+        raise ToolError(f"생성 코드용 에셋 경로가 올바르지 않습니다: {package!r}")
+    return package + "." + package.rsplit("/", 1)[-1]
 
 
 @dataclass
@@ -602,6 +608,14 @@ class Plan:
         return "\n\n".join("// " + w.path.relative_to(self.project.root).as_posix() + "\n" + w.content.decode("utf-8-sig")
                            for w in self.writes if w.label.startswith("C++ 서브시스템"))
 
+    def legacy_config_diff(self) -> str:
+        from .runtime_registration import _decode
+        task = next(w for w in self.writes if w.label == "구버전 INI 정리")
+        before = _decode(task.previous or b"")[0].splitlines(keepends=True)
+        after = _decode(task.content)[0].splitlines(keepends=True)
+        return "".join(difflib.unified_diff(before, after, fromfile="현재/Config/DefaultGame.ini",
+                                          tofile="변환 후/Config/DefaultGame.ini"))
+
     def summary(self) -> str:
         lines = [f"프로젝트: {self.project.name}", f"테이블: {', '.join(t.name for t in self.tables)}",
                  f"C++ 코드 {'변경: 에셋 반영 전 C++ Editor 빌드 필요' if self.code_changed else '변경 없음'}", ""]
@@ -722,7 +736,7 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
             raise ValueError("잘못된 생성 이력")
         if not isinstance(state.get("managed_files", {}), dict):
             raise ValueError("잘못된 코드 생성 이력")
-        if state.get("generator_revision", 1) not in (1, 2, GENERATOR_REVISION):
+        if state.get("generator_revision", 1) not in (1, 2, 3, 4, GENERATOR_REVISION):
             raise ValueError("지원하지 않는 생성기 버전")
     except (ValueError, TypeError) as exc:
         raise ToolError("생성 이력 파일이 손상됐거나 더 최신 버전입니다. 기존 파일은 변경하지 않습니다.") from exc
@@ -767,7 +781,7 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
              "UDataTableSubsystem: private TObjectPtr + C++/BP 공용 Get<Table>Table()을 생성합니다. 행 조회 래퍼·자체 템플릿은 없습니다.",
              "Getter는 공유 테이블 객체를 반환합니다. 로드 실패 시 nullptr이며, 행 조회·실패 처리와 원본 수정 금지는 호출 측 책임입니다.",
              "선택하지 않은 테이블의 구조체·서브시스템 멤버는 보존합니다. JSON 데이터는 선택 항목만 갱신합니다.",
-             "에셋 등록 목록은 UE 에셋 반영이 모두 성공한 뒤 DefaultGame.ini에 갱신합니다. 변환만으로 등록하지 않습니다.",
+             "예정 에셋 경로를 Subsystem CPP에 생성합니다. INI 등록은 사용하지 않으며 에셋 존재·조회 성공은 확인하지 않습니다.",
              "행/필드 삭제는 참조를 자동 이관하지 않습니다. 변경점과 소스 관리를 확인하세요."]
     if state.get("generator_revision", 1) == 1 and old:
         notes.append("v0.1.x 이관: 미선택 테이블을 포함해 행 필드의 편집/쓰기 지정자를 제거합니다. 기존 BP 쓰기 노드와 C++ Editor 빌드를 확인하세요.")
@@ -817,13 +831,32 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
         state["tables"].setdefault(table.name, {}).update({
             "schema": schema, "json_relative": dest.relative_to(project.root).as_posix(),
             "json_sha256": digest(body), "row_keys": [r["RowName"] for r in table.rows], "asset_path": asset_path})
+    # One-time migration only. Future conversions do not read or write the INI.
+    from .runtime_registration import remove_legacy_registration
+    legacy_runtime = state.get("runtime_registration")
+    cleanup = remove_legacy_registration(project, state)
+    if cleanup:
+        for name, package in legacy_runtime["tables"].items():
+            if name not in {t.name for t in tables}:
+                state["tables"][name]["asset_path"] = package
+        notes.append("구버전 INI 이관: 소유 해시를 확인한 도구 구역만 제거합니다. 미선택 등록 경로는 코드에 보존하고 사용자 설정은 유지합니다.")
+    object_paths = {}
+    for table in generated_tables:
+        package = state["tables"][table.name].get("asset_path")
+        if package is None:
+            raise ToolError(f"{table.name}의 기존 에셋 경로 이력이 없습니다. 원본 엑셀을 포함해 다시 변환하세요.")
+        object_paths[table.name] = asset_object_path(package)
     for table in generated_tables:
         state["tables"][table.name]["block_sha256"] = digest(struct_text(table, project))
     expected_paths = {p.relative_to(project.root).as_posix() for p in (sub_header, sub_source)}
     if set(state.get("managed_files", {})) - expected_paths:
         raise ToolError("관리 중인 서브시스템 출력 위치가 변경됐습니다. 이전 파일/생성 이력을 함께 이전해야 합니다.")
     writes.append(_managed_subsystem_task(sub_header, subsystem_header(project, generated_tables), state, project.root, "C++ 서브시스템 헤더"))
-    writes.append(_managed_subsystem_task(sub_source, subsystem_source(project, generated_tables), state, project.root, "C++ 서브시스템 구현"))
+    writes.append(_managed_subsystem_task(sub_source, subsystem_source(project, generated_tables, object_paths), state, project.root, "C++ 서브시스템 구현"))
+    if cleanup:
+        if cleanup.path in claimed:
+            raise ToolError("출력 파일 경로가 서로 충돌합니다.")
+        writes.append(cleanup)
     state["generator_revision"] = GENERATOR_REVISION
     writes.append(WriteTask(manifest_path, json_text(state).encode("utf-8"), old_manifest, "생성 이력"))
     return Plan(project, tables, writes, writes[0].changed, notes, jobs, manifest_path)

@@ -48,7 +48,7 @@ class WholeCodePreviewTests(unittest.TestCase):
         for name in ('Items', 'Players'):
             self.assertIn(f'FOB{name}Row : public FTableRowBase', text['OBStructTypes.h'])
             self.assertIn(f'Get{name}Table() const', text['DataTableSubsystem.h'])
-            self.assertIn(f'{name}Table = LoadRegisteredTable', text['DataTableSubsystem.cpp'])
+            self.assertIn(f'{name}Table = LoadTable', text['DataTableSubsystem.cpp'])
         self.assertTrue(text['DataTableSubsystem.cpp'].endswith('}\n'))
 
     def test_preview_bytes_equal_real_conversion_output(self):

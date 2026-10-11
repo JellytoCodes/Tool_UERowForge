@@ -16,7 +16,6 @@ from unittest.mock import patch
 from test_core import SAMPLE, fixture
 from uerowforge.core import (Field, GENERATOR_REVISION, MANIFEST, ToolError,
                             build_plan, digest, execute_plan, json_text, load_tables, register_project)
-from uerowforge.runtime_registration import build_registration_plan, registration_block
 from uerowforge.subsystem_codegen import subsystem_header, subsystem_source
 
 LEGACY = Path(__file__).parent / "fixtures" / "v020"
@@ -28,6 +27,7 @@ class GetterTests(unittest.TestCase):
         self.project = fixture(Path(self.tmp.name) / "Project")
         self.tables, issues = load_tables([SAMPLE])
         self.assertFalse(issues)
+        self.object_paths = {t.name: f"/Game/DataTables/DT_{t.name}.DT_{t.name}" for t in self.tables}
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -54,7 +54,11 @@ class GetterTests(unittest.TestCase):
         if registered:
             # Simulate previously saved import metadata only; no engine is run.
             registered_tables = {name: meta["asset_path"] for name, meta in state["tables"].items()}
-            block = registration_block(registered_tables)
+            block = "\n".join(["; BEGIN TABLEDESK: RUNTIME",
+                               "; Generated after successful asset import. Do not edit this block.",
+                               "[UETableDesk.DataTables]"] +
+                              [f"{name}={path}.DT_{name}" for name, path in sorted(registered_tables.items())] +
+                              ["; END TABLEDESK: RUNTIME"])
             state["runtime_registration"] = {"tables": registered_tables, "block_sha256": digest(block)}
             manifest.write_text(json_text(state), encoding="utf-8")
             path = self.project.root / "Config/DefaultGame.ini"
@@ -77,12 +81,12 @@ class GetterTests(unittest.TestCase):
             match = re.search(r"UDataTable\* Get" + table.name + r"Table\(\) const\s*\{([^}]+)\}", public)
             self.assertIsNotNone(match)
             self.assertEqual(match[1].strip(), f"return {table.name}Table.Get();")
-        for forbidden in ("TryGet", "FindRow", "RowName", "OutRow", "SetPlayersTable", "LoadRegisteredTable"):
+        for forbidden in ("TryGet", "FindRow", "RowName", "OutRow", "SetPlayersTable", "LoadTable"):
             self.assertNotIn(forbidden, header)
 
     def test_header_has_no_row_type_dependency(self):
         header = subsystem_header(self.project, self.tables)
-        cpp = subsystem_source(self.project, self.tables)
+        cpp = subsystem_source(self.project, self.tables, self.object_paths)
         self.assertIn('#include "Engine/DataTable.h"', header)
         self.assertNotIn("OBStructTypes.h", header)
         self.assertNotIn("FOBPlayersRow", header)
@@ -94,12 +98,12 @@ class GetterTests(unittest.TestCase):
         for subdir in ("Data", "Types/Rows", ""):
             with self.subTest(subdir=subdir):
                 self.project.header_subdir = subdir
-                cpp = subsystem_source(self.project, self.tables)
+                cpp = subsystem_source(self.project, self.tables, self.object_paths)
                 expected = "/".join(p for p in (subdir, "OBStructTypes.h") if p)
                 self.assertIn(f'#include "{expected}"', cpp)
 
     def test_output_deterministic_in_input_order(self):
-        for render in (subsystem_header, subsystem_source):
+        for render in (subsystem_header, lambda p, ts: subsystem_source(p, ts, self.object_paths)):
             self.assertEqual(render(self.project, self.tables), render(self.project, list(reversed(self.tables))))
 
     def test_row_schema_only_change_does_not_rewrite_subsystem(self):
@@ -115,7 +119,7 @@ class GetterTests(unittest.TestCase):
         self.assertTrue(plan.code_changed)
         self.assertEqual(before, {p: self.snapshot(p) for p in paths})
 
-    def test_runtime_registration_and_default_paths_unchanged(self):
+    def test_generated_asset_paths_and_default_paths(self):
         self.generate()
         plan = build_plan(self.project, self.tables)
         self.assertFalse(plan.changed)
@@ -123,9 +127,7 @@ class GetterTests(unittest.TestCase):
         self.assertEqual(self.project.json_subdir, "DataTable")
         self.assertTrue(all(self.project.route_for(t) == "" for t in self.tables))
         self.assertFalse((self.project.root / "Config/DefaultGame.ini").exists())
-        registration = build_registration_plan(plan)
-        ini = next(w.content for w in registration.writes if w.label == "런타임 등록 설정")
-        self.assertIn(b"Players=/Game/DataTables/DT_Players.DT_Players", ini)
+        self.assertIn('TEXT("/Game/DataTables/DT_Players.DT_Players")', plan.subsystem_preview())
 
     def test_converted_files_stay_unchanged_in_another_checkout(self):
         self.generate()
@@ -137,7 +139,7 @@ class GetterTests(unittest.TestCase):
             self.assertEqual(task.path.read_bytes(), task.content, task.path.name)
         self.assertFalse(plan.changed)
 
-    def test_v020_migration_changes_only_subsystem_and_manifest(self):
+    def test_v020_migration_updates_only_subsystem_and_manifest(self):
         manifest = self.install_v020()
         before = {p.relative_to(self.project.root).as_posix(): (p.read_bytes(), p.stat().st_mtime_ns)
                   for p in self.project.root.rglob("*") if p.is_file()}
@@ -154,7 +156,7 @@ class GetterTests(unittest.TestCase):
         self.assertIn("+    UDataTable* GetPlayersTable() const", plan.code_diff())
         backup = execute_plan(plan)
         self.assertIsNotNone(backup)
-        for relative in changed:
+        for relative in changed & before.keys():
             self.assertEqual((backup / relative).read_bytes(), before[relative][0])
         for relative in before.keys() - changed:
             self.assertEqual(self.snapshot(relative), before[relative])
@@ -166,7 +168,7 @@ class GetterTests(unittest.TestCase):
     def test_v020_partial_upgrade_preserves_unselected_and_registration(self):
         manifest = self.install_v020(registered=True)
         before_runtime = json.loads(manifest.read_bytes())["runtime_registration"]
-        unchanged = ["DataTable/Items.json", "DataTable/Players.json", "Config/DefaultGame.ini", self.project.header_relative]
+        unchanged = ["DataTable/Items.json", "DataTable/Players.json", self.project.header_relative]
         before = {p: self.snapshot(p) for p in unchanged}
         players = next(t for t in self.tables if t.name == "Players")
         self.generate([players])
@@ -176,11 +178,16 @@ class GetterTests(unittest.TestCase):
         self.assertNotIn("TryGet", h)
         self.assertEqual(before, {p: self.snapshot(p) for p in unchanged})
         state = json.loads(manifest.read_bytes())
-        self.assertEqual(state["runtime_registration"], before_runtime)
-        # Existing registration can be reused without reimport or INI rewriting.
+        self.assertNotIn("runtime_registration", state)
+        for name, path in before_runtime["tables"].items():
+            self.assertEqual(state["tables"][name]["asset_path"], path)
+        self.assertEqual((self.project.root / "Config/DefaultGame.ini").read_bytes(),
+                         b"\xef\xbb\xbf[/Script/EngineSettings.GeneralProjectSettings]\r\nProjectName=KeepMe\r\n")
+        self.assertNotIn(b"BEGIN TABLEDESK: RUNTIME", (self.project.root / "Config/DefaultGame.ini").read_bytes())
+        # Registration is now in code. Subsequent conversion has no INI task.
         plan = build_plan(self.project, self.tables)
         self.assertFalse(plan.changed)
-        self.assertFalse(build_registration_plan(plan).changed)
+        self.assertFalse(any(w.path.suffix == ".ini" for w in plan.writes))
 
     def test_v020_migration_with_new_table_keeps_legacy_tables(self):
         self.install_v020()
@@ -191,7 +198,7 @@ class GetterTests(unittest.TestCase):
         cpp = self.read(self.project.subsystem_source_relative)
         for name in ("Players", "Items", "Weapons"):
             self.assertIn(f"UDataTable* Get{name}Table() const", h)
-            self.assertIn(f'LoadRegisteredTable(TEXT("{name}"), FOB{name}Row::StaticStruct())', cpp)
+            self.assertIn(f'LoadTable(TEXT("{name}"), TEXT("/Game/DataTables/DT_{name}.DT_{name}"), FOB{name}Row::StaticStruct())', cpp)
         self.assertTrue((self.project.root / "DataTable/Weapons.json").exists())
 
     def test_v020_upgrade_tamper_is_blocked_without_writes(self):
@@ -219,7 +226,7 @@ class GetterTests(unittest.TestCase):
     def test_v020_upgrade_write_failure_restores_original_generated_files(self):
         self.install_v020()
         plan = build_plan(self.project, self.tables)
-        before = {w.path: w.path.read_bytes() for w in plan.writes}
+        before = {w.path: w.path.read_bytes() if w.path.exists() else None for w in plan.writes}
         from uerowforge import core
         write = core.atomic_write
         def fail_source(path, data):
@@ -230,15 +237,15 @@ class GetterTests(unittest.TestCase):
             with self.assertRaises(ToolError):
                 execute_plan(plan)
         for path, content in before.items():
-            self.assertEqual(path.read_bytes(), content)
+            self.assertEqual(path.read_bytes() if path.exists() else None, content)
 
     def test_new_manifest_revision_prevents_old_generator_downgrade(self):
         plan, _ = self.generate()
         state = json.loads(plan.manifest_path.read_bytes())
-        self.assertEqual(GENERATOR_REVISION, 3)
-        self.assertEqual(state["generator_revision"], 3)
+        self.assertEqual(GENERATOR_REVISION, 5)
+        self.assertEqual(state["generator_revision"], 5)
         # v0.2.0 accepts only 1 and 2; the upgraded format must not masquerade as 2.
-        self.assertNotIn(state["generator_revision"], (1, 2))
+        self.assertNotIn(state["generator_revision"], (1, 2, 3, 4))
 
     def test_migration_never_touches_other_code_or_asset_bytes(self):
         self.install_v020()
