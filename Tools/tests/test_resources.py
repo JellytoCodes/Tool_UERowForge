@@ -30,7 +30,8 @@ class ResourcePathTests(unittest.TestCase):
         self.assertFalse(issues)
         self.assertEqual([t.name for t in tables], ['Players', 'Items'])
         self.assertTrue(all(t.valid for t in tables))
-        self.assertEqual(sum(len(t.rows) for t in tables), 6)
+        self.assertEqual([len(t.rows) for t in tables], [30, 30])
+        self.assertEqual([t.rows[-1]['RowName'] for t in tables], ['Player_030', 'Item_030'])
 
     def test_source_help_resolves_repository_readme(self):
         with patch.object(sys, 'frozen', False, create=True):
@@ -68,7 +69,7 @@ class ResourcePathTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload['ok'])
-        self.assertEqual(sum(t['rows'] for t in payload['tables']), 6)
+        self.assertEqual([t['rows'] for t in payload['tables']], [30, 30])
 
     def test_readme_verification_runs_commands_from_tools_directory(self):
         readme = (REPO / 'README.md').read_text(encoding='utf-8')

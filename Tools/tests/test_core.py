@@ -160,7 +160,7 @@ class XlsxTests(unittest.TestCase):
         tables, issues = load_tables([SAMPLE])
         self.assertFalse(issues)
         self.assertTrue(all(t.valid for t in tables))
-        self.assertEqual(sum(len(t.rows) for t in tables), 6)
+        self.assertEqual([len(t.rows) for t in tables], [30, 30])
 
     def test_missing_file_reported(self):
         tables, issues = load_tables([Path("does-not-exist.xlsx")])

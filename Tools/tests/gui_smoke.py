@@ -58,7 +58,7 @@ def main():
             assert exported.read_bytes() == (ROOT / "resources/TableTemplate.xlsx").read_bytes()
             assert len(app.tables) == 2
             assert len(app.table_tree.get_children()) == 2
-            assert len(app.data_tree.get_children()) == 3
+            assert len(app.data_tree.get_children()) == 30
             assert len(app.table_tree.selection()) == 2
             assert not errors, errors
             # Data and JSON remain table-specific, while common code is never

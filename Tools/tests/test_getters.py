@@ -46,6 +46,11 @@ class GetterTests(unittest.TestCase):
         manifest = (self.project.root / self.project.header_relative).parent / MANIFEST
         state = json.loads(manifest.read_bytes())
         self.assertEqual(state["generator_revision"], 2)
+        # Migration-only tests use the fixture's original data. The current
+        # shipped template also contains additional rows for scrolling demos.
+        for table in self.tables:
+            keys = set(state["tables"][table.name]["row_keys"])
+            table.rows = [row for row in table.rows if row["RowName"] in keys]
         # The legacy fixture comes from the unmodified v0.2.0 generator.
         self.assertIn("TryGetPlayersRow", self.read(self.project.subsystem_header_relative))
         self.assertIn("template <typename TRow>", self.read(self.project.subsystem_source_relative))
@@ -164,6 +169,22 @@ class GetterTests(unittest.TestCase):
         self.assertEqual(state["generator_revision"], GENERATOR_REVISION)
         self.assertFalse(build_plan(self.project, self.tables).changed)
         self.assertFalse(any("v0.2.0 이관" in n for n in build_plan(self.project, self.tables).notes))
+
+    def test_v020_migration_with_expanded_template_rows_preserves_original_data(self):
+        expanded = copy.deepcopy(self.tables)
+        self.install_v020()
+        original = {t.name: copy.deepcopy(t.rows) for t in self.tables}
+        plan = build_plan(self.project, expanded)
+        self.assertEqual({w.label for w in plan.changed}, {
+            "C++ 서브시스템 헤더", "C++ 서브시스템 구현", "JSON Players", "JSON Items", "생성 이력"})
+        execute_plan(plan)
+        state = json.loads(plan.manifest_path.read_bytes())
+        for table in expanded:
+            rows = json.loads((self.project.root / f"DataTable/{table.name}.json").read_bytes())
+            self.assertEqual(len(rows), 30)
+            self.assertEqual(rows[:len(original[table.name])], original[table.name])
+            self.assertEqual(state["tables"][table.name]["row_keys"], [row["RowName"] for row in rows])
+        self.assertFalse(build_plan(self.project, expanded).changed)
 
     def test_v020_partial_upgrade_preserves_unselected_and_registration(self):
         manifest = self.install_v020(registered=True)
