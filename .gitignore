@@ -1,13 +1,18 @@
 # Python / packaging
 __pycache__/
 *.py[cod]
+*.egg-info/
+__pypackages__/
 .venv/
 venv/
 build/
 dist/
 *.spec
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # Local secrets and editor state
@@ -16,10 +21,14 @@ htmlcov/
 !.env.example
 .idea/
 .vs/
+.vscode/
 *.user
+*.userosscache
+*.sln.docstates
 *.suo
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Local working data, not test fixtures
 .local/
@@ -27,7 +36,7 @@ Thumbs.db
 .tabledesk-local/
 
 # Do NOT ignore generated ownership manifests globally.
-# Tool/tests/fixtures/**/.tabledesk-manifest.json must remain tracked.
+# Tools/tests/fixtures/**/.tabledesk-manifest.json must remain tracked.
 
 # User-owned Unreal samples: track source/content; exclude local build artifacts.
 Samples/**/Binaries/
@@ -38,8 +47,5 @@ Samples/**/*.sln
 Samples/**/*.slnx
 Samples/**/*.VC.db
 Samples/**/*.VC.opendb
-Samples/**/.vs/
-Samples/**/.idea/
-Samples/**/.vscode/
 Samples/**/*.opensdf
 Samples/**/*.sdf

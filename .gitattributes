@@ -22,3 +22,4 @@
 
 # Preserve historical fixture bytes: ownership hashes depend on them.
 Tool/tests/fixtures/** -text
+Tools/tests/fixtures/** -text
