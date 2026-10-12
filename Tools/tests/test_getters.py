@@ -263,8 +263,8 @@ class GetterTests(unittest.TestCase):
     def test_new_manifest_revision_prevents_old_generator_downgrade(self):
         plan, _ = self.generate()
         state = json.loads(plan.manifest_path.read_bytes())
-        self.assertEqual(GENERATOR_REVISION, 5)
-        self.assertEqual(state["generator_revision"], 5)
+        self.assertEqual(GENERATOR_REVISION, 6)
+        self.assertEqual(state["generator_revision"], 6)
         # v0.2.0 accepts only 1 and 2; the upgraded format must not masquerade as 2.
         self.assertNotIn(state["generator_revision"], (1, 2, 3, 4))
 

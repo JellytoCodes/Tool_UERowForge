@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import difflib
@@ -24,11 +24,15 @@ MARKER = "// UE TABLEDESK - MANAGED HEADER v1"
 MANIFEST = ".tabledesk-manifest.json"
 DEFAULT_HEADER_SUBDIR = "Data"
 DEFAULT_JSON_SUBDIR = "DataTable"
-GENERATOR_REVISION = 5
+GENERATOR_REVISION = 6
 TYPES = {"string": "String", "fstring": "String", "name": "Name", "fname": "Name",
-         "int": "Int", "int32": "Int", "float": "Float", "bool": "Bool", "rowkey": "RowKey"}
+         "int": "Int", "int32": "Int", "float": "Float", "bool": "Bool", "rowkey": "RowKey",
+         "text": "Text", "ftext": "Text", "softobject": "SoftObject"}
 CPP = {"String": ("FString", 'TEXT("")'), "Name": ("FName", "NAME_None"),
-       "Int": ("int32", "0"), "Float": ("float", "0.0f"), "Bool": ("bool", "false")}
+       "Int": ("int32", "0"), "Float": ("float", "0.0f"), "Bool": ("bool", "false"),
+       "Text": ("FText", "FText::GetEmpty()"), "SoftObject": ("FSoftObjectPath", "FSoftObjectPath()")}
+ENUM_BEGIN = "// BEGIN TABLEDESK ENUMS"
+ENUM_END = "// END TABLEDESK ENUMS"
 RESERVED = set(("alignas alignof and and_eq asm atomic_cancel atomic_commit atomic_noexcept auto "
     "bitand bitor bool break case catch char char8_t char16_t char32_t class compl concept const "
     "consteval constexpr constinit const_cast continue co_await co_return co_yield decltype default "
@@ -307,6 +311,8 @@ class Issue:
 class Field:
     name: str
     type: str
+    enum_name: str = ""
+    enum_values: tuple[str, ...] = ()
 
 
 @dataclass
@@ -325,7 +331,9 @@ class Table:
         return not any(i.level == "오류" for i in self.issues)
 
     def schema(self) -> list[dict]:
-        return [asdict(f) for f in self.fields if f.type != "RowKey"]
+        return [dict(name=f.name, type=f.type, **(
+            {"enum_name": f.enum_name, "enum_values": list(f.enum_values)} if f.type == "Enum" else {}))
+            for f in self.fields if f.type != "RowKey"]
 
     def cpp_name(self, prefix: str) -> str:
         return f"F{prefix}{self.name}Row"
@@ -346,11 +354,28 @@ def _blank(value: object) -> bool:
 def _value(raw: object, typ: str) -> object:
     if isinstance(raw, SpecialCell):
         raise ToolError(f"{raw.kind} 셀은 지원하지 않습니다. 값으로 붙여넣으세요: {raw.text}")
-    if typ in ("String", "Name", "RowKey"):
+    if typ == "Enum":
+        if _blank(raw) or raw == 0 or isinstance(raw, str) and raw.strip().casefold() in ("none", "0"):
+            if isinstance(raw, bool):
+                raise ToolError("Enum 값에 Bool을 사용할 수 없습니다.")
+            return "None"
+        if not isinstance(raw, str):
+            raise ToolError("Enum은 영문 항목명으로 입력하세요. 숫자는 None을 뜻하는 0만 지원합니다.")
+        value = raw.strip()
+        identifier(value, "Enum 항목명")
+        return value
+    if typ == "SoftObject":
+        if _blank(raw) or raw == "None":
+            return "None"
+        if not isinstance(raw, str) or len(raw) > 1024 or not re.fullmatch(
+                r"/[A-Za-z][A-Za-z0-9_]*(?:/[A-Za-z_][A-Za-z0-9_]*)+\.[A-Za-z_][A-Za-z0-9_]*", raw):
+            raise ToolError("SoftObject는 /Game/폴더/에셋.에셋 형식의 전체 참조 경로가 필요합니다. 이름만으로 경로를 만들지 않습니다.")
+        return raw
+    if typ in ("String", "Text", "Name", "RowKey"):
         if _blank(raw):
             if typ == "RowKey":
                 raise ToolError("RowName은 필수입니다.")
-            return "" if typ == "String" else "None"
+            return "" if typ in ("String", "Text") else "None"
         if not isinstance(raw, str):
             raise ToolError("문자열/Name/행 키는 Excel 텍스트 셀로 입력하세요. 앞자리 0 손실을 방지합니다.")
         if typ == "RowKey":
@@ -392,22 +417,26 @@ def _value(raw: object, typ: str) -> object:
 
 
 def parse_sheet(sheet: Sheet, source: Path) -> Table:
-    name = str(sheet.get(1, 2) or "").strip()
+    legacy = sheet.get(1, 1) == "TableName"
+    header_row = 2 if legacy or str(sheet.get(2, 1) or "").strip() in ("ID", "RowName") else 1
+    name = str(sheet.get(1, 2) or "").strip() if legacy else sheet.name.strip()
     table = Table(name or sheet.name, str(source.resolve()), sheet.name, "", [], [])
 
     def error(cell: str, message: str, level: str = "오류") -> None:
         if len(table.issues) < 200:
             table.issues.append(Issue(level, str(source), sheet.name, cell, message))
 
-    if sheet.get(1, 1) != "TableName":
-        error("A1", "A1=TableName, B1=테이블명인 템플릿을 사용하세요. 설명 시트는 '_'로 시작하세요.")
+    if not legacy and str(sheet.get(header_row, 1) or "").strip() not in ("ID", "RowName"):
+        error("A1:A3", "첫 필드는 ID / Int 또는 RowName / RowKey입니다. 영문 필드명은 1행 또는 2행, 타입은 3행에 입력하세요.")
+    table_name_valid = True
     try:
         identifier(name, "테이블명")
     except ToolError as exc:
-        error("B1", str(exc))
-    if sheet.get(1, 4) not in (None, "", "SubPath"):
+        table_name_valid = False
+        error("B1" if legacy else "시트명", str(exc))
+    if legacy and sheet.get(1, 4) not in (None, "", "SubPath"):
         error("D1", "D1은 SubPath 또는 빈 칸이어야 합니다.")
-    if not _blank(sheet.get(1, 5)):
+    if legacy and not _blank(sheet.get(1, 5)):
         if sheet.get(1, 4) != "SubPath":
             error("D1", "하위 경로를 사용할 때 D1=SubPath를 입력하세요.")
         try:
@@ -416,54 +445,97 @@ def parse_sheet(sheet: Sheet, source: Path) -> Table:
             error("E1", str(exc))
     if sheet.merged:
         error("시트", "테이블 시트의 병합 셀은 지원하지 않습니다. 셀 병합을 해제하세요.")
-    cols = sorted({c for (r, c), v in sheet.cells.items() if r in (2, 3) and not _blank(v)})
+    cols = sorted({c for (r, c), v in sheet.cells.items() if r in (header_row, 3) and not _blank(v)})
     if not cols:
         error("2~3행", "필드명/타입이 없습니다.")
         return table
     last = max(cols)
+    if not any(not _blank(sheet.get(3, c)) for c in range(1, last + 1)):
+        error("3행", "타입 행이 비었습니다. 3행에 각 필드의 타입을 입력하세요.")
+        return table
     seen_fields: set[str] = set()
+    columns: list[tuple[int, Field]] = []
+    ignored_columns: set[int] = set()
+    numeric_key = not legacy and str(sheet.get(header_row, 1) or "").strip() == "ID"
+    if numeric_key:
+        table.fields.append(Field("RowName", "RowKey"))
     for col in range(1, last + 1):
-        raw_name = sheet.get(2, col)
+        raw_name = sheet.get(header_row, col)
         raw_type = sheet.get(3, col)
         field_name = str(raw_name or "").strip()
-        typ = TYPES.get(str(raw_type or "").strip().lower(), "")
+        if not legacy:
+            field_name = re.sub(r"\s+", "_", field_name)
+        type_text = str(raw_type or "").strip()
+        if type_text.casefold().replace(" ", "") == "string(editonly)" and col > 1:
+            ignored_columns.add(col)
+            continue
+        typ = TYPES.get(type_text.lower(), "")
+        enum_name = ""
+        if type_text.lower() == "enum" or type_text.lower().startswith("enum:"):
+            typ = "Enum"
+            enum_name = type_text.split(":", 1)[1].strip() if ":" in type_text else f"E{name}{field_name}"
+            try:
+                if ":" in type_text or table_name_valid:
+                    identifier(enum_name, "Enum 타입명")
+                if (":" in type_text or table_name_valid) and not re.fullmatch(r"E[A-Za-z][A-Za-z0-9_]*", enum_name):
+                    raise ToolError("Enum 타입명은 E + 영문으로 시작해야 합니다. 예: Enum:EScriptEvent")
+            except ToolError as exc:
+                error(cell_name(col, 3), str(exc))
         try:
             identifier(field_name, "필드명")
         except ToolError as exc:
-            error(cell_name(col, 2), str(exc))
+            error(cell_name(col, header_row), str(exc))
         if field_name.casefold() in seen_fields:
-            error(cell_name(col, 2), "필드명이 중복됩니다. 대소문자를 구분하지 않습니다.")
+            error(cell_name(col, header_row), "필드명이 중복됩니다. 대소문자를 구분하지 않습니다.")
         seen_fields.add(field_name.casefold())
         if not typ:
-            error(cell_name(col, 3), "지원 타입: RowKey, String, Name, Int, Float, Bool")
-        if col == 1 and (field_name != "RowName" or typ != "RowKey"):
-            error("A2:A3", "첫 컬럼은 RowName / RowKey여야 합니다.")
+            error(cell_name(col, 3), "지원 타입: RowKey, String, Name, Int, Float, Bool, Text, SoftObject, Enum[:E타입명], String(Edit only)")
+        if col == 1 and not ((field_name == "RowName" and typ == "RowKey") or numeric_key and typ == "Int"):
+            error(f"A{header_row}:A3", "첫 컬럼은 ID / Int 또는 RowName / RowKey여야 합니다." if not legacy else "첫 컬럼은 RowName / RowKey여야 합니다.")
         if col > 1 and (typ == "RowKey" or field_name.casefold() == "rowname"):
             error(cell_name(col, 3), "행 키는 첫 컬럼에 한 번만 지정하세요.")
-        table.fields.append(Field(field_name, typ))
-    if last < 2:
+        fld = Field(field_name, typ, enum_name)
+        table.fields.append(fld)
+        columns.append((col, fld))
+    if len(table.fields) < 2:
         error("2행", "RowName 외에 데이터 필드가 하나 이상 필요합니다.")
     row_numbers = sorted({r for r, c in sheet.cells if r >= 4})
     seen_keys: set[str] = set()
     for row in row_numbers:
-        if all(_blank(sheet.get(row, c)) for c in range(1, last + 1)):
+        if all(_blank(sheet.get(row, c)) for c in range(1, last + 1) if c not in ignored_columns):
             if any(not _blank(v) for (r, c), v in sheet.cells.items() if r == row and c > last):
                 error(f"{row}행", "정의된 컬럼 밖에 값이 있습니다.")
             continue
         values: dict = {}
-        for col, fld in enumerate(table.fields, 1):
+        for col, fld in columns:
             if not fld.type:
                 continue
             try:
-                values[fld.name] = _value(sheet.get(row, col), fld.type)
+                raw = sheet.get(row, col)
+                if not legacy and _blank(raw) and fld.type in ("Int", "Float", "Bool") and col != 1:
+                    raw = False if fld.type == "Bool" else 0
+                values[fld.name] = _value(raw, fld.type)
             except ToolError as exc:
                 error(cell_name(col, row), str(exc))
+        if numeric_key and isinstance(values.get("ID"), int):
+            try:
+                values = {"RowName": _value(str(values["ID"]), "RowKey"), **values}
+            except ToolError as exc:
+                error(cell_name(1, row), str(exc))
         key = values.get("RowName")
         if isinstance(key, str):
             if key.casefold() in seen_keys:
                 error(cell_name(1, row), f"중복 RowName: {key} (대소문자 구분 없음)")
             seen_keys.add(key.casefold())
         table.rows.append(values)
+    for index, fld in enumerate(table.fields):
+        if fld.type == "Enum":
+            members = tuple(dict.fromkeys(["None"] + [r[fld.name] for r in table.rows if fld.name in r]))
+            if len({m.casefold() for m in members}) != len(members):
+                error("Enum", f"{fld.name}: Enum 항목의 대소문자만 다른 이름은 지원하지 않습니다.")
+            if len(members) > 255:
+                error("Enum", f"{fld.name}: None을 포함해 최대 255개 항목을 지원합니다.")
+            table.fields[index] = replace(fld, enum_values=members)
     extra = [(r, c) for (r, c), v in sheet.cells.items() if r >= 4 and c > last and not _blank(v)]
     if extra:
         error(cell_name(extra[0][1], extra[0][0]), "정의된 컬럼 밖에 데이터가 있습니다.")
@@ -503,6 +575,38 @@ def load_tables(paths: list[Path]) -> tuple[list[Table], list[Issue]]:
     return tables, issues
 
 
+def _enum_members(name: str, members: object) -> tuple[str, ...]:
+    identifier(name, "Enum 타입명")
+    if not re.fullmatch(r"E[A-Za-z][A-Za-z0-9_]*", name):
+        raise ToolError("Enum 타입명은 E + 영문으로 시작해야 합니다.")
+    if not isinstance(members, (tuple, list)) or not 1 <= len(members) <= 255 or members[0] != "None":
+        raise ToolError(f"{name}: None=0부터 시작하는 최대 255개 항목이 필요합니다.")
+    for member in members:
+        if not isinstance(member, str):
+            raise ToolError(f"{name}: 잘못된 Enum 항목입니다.")
+        identifier(member, "Enum 항목명")
+    if len({v.casefold() for v in members}) != len(members):
+        raise ToolError(f"{name}: Enum 항목이 중복됩니다.")
+    return tuple(members)
+
+
+def _enum_block(enums: dict[str, tuple[str, ...]]) -> str:
+    text = [ENUM_BEGIN]
+    for name in sorted(enums):
+        text += ["UENUM(BlueprintType)", f"enum class {name} : uint8", "{"]
+        text += [f"    {value} = {index}," for index, value in enumerate(enums[name])]
+        text += ["};", ""]
+    text.append(ENUM_END)
+    return "\n".join(text)
+
+
+def _existing_enum_block(text: str) -> str | None:
+    matches = re.findall(r"^" + re.escape(ENUM_BEGIN) + r"\n.*?^" + re.escape(ENUM_END) + r"$", text, re.M | re.S)
+    if len(matches) > 1 or text.count(ENUM_BEGIN) != len(matches) or text.count(ENUM_END) != len(matches):
+        raise ToolError("헤더의 Enum 생성 마커가 손상됐습니다.")
+    return matches[0] if matches else None
+
+
 def struct_text(table: Table, project: Project) -> str:
     text = [f"// BEGIN TABLEDESK: {table.name}", "USTRUCT(BlueprintType)",
             f"struct {project.module.upper()}_API {table.cpp_name(project.prefix)} : public FTableRowBase",
@@ -510,7 +614,7 @@ def struct_text(table: Table, project: Project) -> str:
     for fld in table.fields:
         if fld.type == "RowKey":
             continue
-        typ, default = CPP[fld.type]
+        typ, default = (fld.enum_name, fld.enum_name + "::None") if fld.type == "Enum" else CPP[fld.type]
         text += [f'    UPROPERTY(BlueprintReadOnly, Category = "{table.name}")',
                  f"    {typ} {fld.name} = {default};", ""]
     text += ["};", f"// END TABLEDESK: {table.name}"]
@@ -530,13 +634,24 @@ def header_blocks(text: str) -> dict[str, str]:
     return found
 
 
-def merge_header(existing: str | None, tables: list[Table], project: Project) -> str:
+def merge_header(existing: str | None, tables: list[Table], project: Project,
+                 enums: dict[str, tuple[str, ...]] | None = None) -> str:
+    if enums is None:
+        enums = {}
+        for table in tables:
+            for fld in table.fields:
+                if fld.type == "Enum":
+                    values = _enum_members(fld.enum_name, fld.enum_values)
+                    enums[fld.enum_name] = tuple(dict.fromkeys(enums.get(fld.enum_name, ()) + values))
     fresh = {t.name: struct_text(t, project) for t in tables}
+    needs_soft_path = any(f.type == "SoftObject" for t in tables for f in t.fields)
+    soft_include = '#include "UObject/SoftObjectPath.h"\n' if needs_soft_path else ""
+    enum_text = _enum_block(enums) if enums else ""
     if existing is None:
         body = (f'{MARKER}\n// Edit Excel source; only marked blocks are maintained by TableDesk.\n'
                 '#pragma once\n\n#include "CoreMinimal.h"\n#include "Engine/DataTable.h"\n'
-                f'#include "{project.prefix}StructTypes.generated.h"\n')
-        return body + "\n\n" + "\n\n".join(fresh[n] for n in sorted(fresh)) + "\n"
+                + soft_include + f'#include "{project.prefix}StructTypes.generated.h"\n')
+        return body + "\n\n" + (enum_text + "\n\n" if enum_text else "") + "\n\n".join(fresh[n] for n in sorted(fresh)) + "\n"
     existing = existing.replace("\r\n", "\n")
     if not existing.startswith(MARKER + "\n"):
         raise ToolError(f"기존 {project.header_name}은 UERowForge 관리 파일이 아닙니다.\n"
@@ -550,6 +665,26 @@ def merge_header(existing: str | None, tables: list[Table], project: Project) ->
         if conflict:
             raise ToolError(f"테이블 이름의 대소문자만 바꾸는 변경은 지원하지 않습니다: {conflict} → {name}")
     result = existing
+    previous_enum = _existing_enum_block(existing)
+    outside = existing
+    for block in blocks.values():
+        outside = outside.replace(block, "")
+    if previous_enum:
+        outside = outside.replace(previous_enum, "")
+    for name in enums:
+        if re.search(r"\benum\s+(?:(?:class|struct)\s+)?" + re.escape(name) + r"\b", outside):
+            raise ToolError(f"같은 Enum 이름이 수기 코드에 있습니다: {name}")
+    if needs_soft_path and '#include "UObject/SoftObjectPath.h"' not in result:
+        generated_include = f'#include "{project.prefix}StructTypes.generated.h"'
+        result = result.replace(generated_include, soft_include + generated_include, 1)
+    if previous_enum:
+        result = result.replace(previous_enum, enum_text, 1)
+    elif enum_text:
+        first = next(iter(blocks.values()), None)
+        if first:
+            result = result.replace(first, enum_text + "\n\n" + first, 1)
+        else:
+            result = result.rstrip() + "\n\n" + enum_text + "\n"
     for name, block in fresh.items():
         if name in blocks:
             result = result.replace(blocks[name], block, 1)
@@ -736,7 +871,7 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
             raise ValueError("잘못된 생성 이력")
         if not isinstance(state.get("managed_files", {}), dict):
             raise ValueError("잘못된 코드 생성 이력")
-        if state.get("generator_revision", 1) not in (1, 2, 3, 4, GENERATOR_REVISION):
+        if state.get("generator_revision", 1) not in (1, 2, 3, 4, 5, GENERATOR_REVISION):
             raise ValueError("지원하지 않는 생성기 버전")
     except (ValueError, TypeError) as exc:
         raise ToolError("생성 이력 파일이 손상됐거나 더 최신 버전입니다. 기존 파일은 변경하지 않습니다.") from exc
@@ -748,6 +883,20 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
         raise ToolError("기존 행 헤더의 생성 이력이 없습니다. .tabledesk-manifest.json을 백업에서 복원하세요.")
     if set(previous_blocks) != set(state["tables"]):
         raise ToolError("행 헤더와 생성 이력의 테이블 목록이 다릅니다. 삭제/수정된 파일을 복원하세요.")
+    try:
+        if not isinstance(state.get("enums", {}), dict):
+            raise ValueError("잘못된 Enum 이력")
+        enums = {name: _enum_members(name, values) for name, values in state.get("enums", {}).items()}
+        if len({name.casefold() for name in enums}) != len(enums):
+            raise ValueError("Enum 타입명 중복")
+        existing_enum = _existing_enum_block(current_text) if current_text else None
+        if enums:
+            if existing_enum != _enum_block(enums) or digest(existing_enum or "") != state.get("enum_block_sha256"):
+                raise ValueError("Enum 생성 구역/이력 불일치")
+        elif existing_enum is not None or "enum_block_sha256" in state:
+            raise ValueError("소유 이력이 없는 Enum 구역")
+    except (TypeError, ValueError) as exc:
+        raise ToolError("Enum 생성 이력 또는 관리 구역이 손상/외부 수정됐습니다. 원본을 복원하세요.") from exc
     all_tables: dict[str, Table] = {}
     for name, meta in state["tables"].items():
         if not isinstance(meta, dict) or digest(previous_blocks[name]) != meta.get("block_sha256"):
@@ -757,9 +906,15 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
             fields = [Field("RowName", "RowKey")]
             for f in meta["schema"]:
                 identifier(f["name"], "기존 필드명")
-                if f["type"] not in CPP:
+                if f["type"] not in CPP and f["type"] != "Enum":
                     raise ValueError("지원하지 않는 타입")
-                fields.append(Field(f["name"], f["type"]))
+                if f["type"] == "Enum":
+                    members = _enum_members(f["enum_name"], f["enum_values"])
+                    if f["enum_name"] not in enums or not set(members) <= set(enums[f["enum_name"]]):
+                        raise ValueError("Enum 선언 이력 누락")
+                    fields.append(Field(f["name"], "Enum", f["enum_name"], members))
+                else:
+                    fields.append(Field(f["name"], f["type"]))
             if len({f.name.casefold() for f in fields}) != len(fields) or len(fields) < 2:
                 raise ValueError("중복/빈 스키마")
         except (KeyError, TypeError, ValueError) as exc:
@@ -774,7 +929,32 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
     # Rebuild every tracked schema so the v0.1.x read/write fields migrate together,
     # including tables not selected in this conversion. Unselected JSON is untouched.
     generated_tables = [all_tables[n] for n in sorted(all_tables)]
-    content = merge_header(current_text, generated_tables, project)
+    for table in generated_tables:
+        for fld in table.fields:
+            if fld.type != "Enum":
+                continue
+            values = _enum_members(fld.enum_name, fld.enum_values)
+            conflict = next((n for n in enums if n.casefold() == fld.enum_name.casefold() and n != fld.enum_name), None)
+            if conflict:
+                raise ToolError(f"Enum 타입명의 대소문자만 바꾸는 변경은 지원하지 않습니다: {conflict}")
+            previous = enums.get(fld.enum_name, ("None",))
+            for value in values:
+                conflict = next((v for v in previous if v.casefold() == value.casefold() and v != value), None)
+                if conflict:
+                    raise ToolError(f"{fld.enum_name}: 항목명의 대소문자만 바꾸는 변경은 지원하지 않습니다: {conflict}")
+            enums[fld.enum_name] = _enum_members(fld.enum_name, tuple(dict.fromkeys(previous + values)))
+    # Never overwrite a user-defined enum elsewhere in project source.
+    for path in (project.root / "Source").rglob("*.h") if enums else ():
+        if path == header:
+            continue
+        source_text = path.read_text(encoding="utf-8-sig", errors="replace")
+        for enum_name in enums:
+            if re.search(r"\benum\s+(?:(?:class|struct)\s+)?" + re.escape(enum_name) + r"\b", source_text):
+                raise ToolError(f"동명 Enum이 기존 사용자 헤더에 있습니다: {enum_name}\n{path}")
+    content = merge_header(current_text, generated_tables, project, enums)
+    if enums:
+        state["enums"] = {name: list(values) for name, values in sorted(enums.items())}
+        state["enum_block_sha256"] = digest(_enum_block(enums))
     payload = old if old is not None and current_text == content else content.encode("utf-8")
     writes = [WriteTask(header, payload, old, "C++ 헤더")]
     notes = ["행 필드는 BlueprintReadOnly + Category로 고정합니다. 관리 중인 모든 행 구조체에 적용합니다.",
@@ -788,6 +968,8 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
     if state.get("generator_revision", 1) == 2 and state.get("managed_files"):
         notes.append("v0.2.0 이관: 모든 관리 테이블의 Find<Table>Row/TryGet<Table>Row를 제거하고 Get<Table>Table()로 교체합니다. 기존 C++ 호출/BP 노드는 자동 이관하지 않습니다.")
         notes.append("행 타입을 사용하는 C++ 호출 파일은 행 헤더를 직접 include해야 합니다. 서브시스템 헤더는 더 이상 행 헤더를 포함하지 않습니다. Editor 타깃 전체 빌드와 BP 재연결이 필요합니다.")
+    if enums:
+        notes.append("Enum은 None=0으로 시작하며 기존 번호를 보존합니다. 새 항목만 뒤에 추가하고 기존 항목은 데이터에서 빠져도 선언을 유지합니다.")
     jobs: list[dict] = []
     claimed: set[Path] = {header, manifest_path, sub_header, sub_source}
     for table in tables:
@@ -807,8 +989,8 @@ def _build_plan(project: Project, tables: list[Table]) -> Plan:
                                 "원본과 비교한 후 다른 출력 경로를 사용하세요.")
         schema = table.schema()
         if previous_meta:
-            prior_fields = {f["name"]: f["type"] for f in previous_meta.get("schema", [])}
-            next_fields = {f["name"]: f["type"] for f in schema}
+            prior_fields = {f["name"]: (f["type"], f.get("enum_name")) for f in previous_meta.get("schema", [])}
+            next_fields = {f["name"]: (f["type"], f.get("enum_name")) for f in schema}
             removed = sorted(set(prior_fields) - set(next_fields))
             retyped = sorted(n for n in prior_fields.keys() & next_fields.keys() if prior_fields[n] != next_fields[n])
             if removed or retyped:

@@ -20,6 +20,16 @@ DataTable은 기본 경로인 `/Game/DataTables/DT_<테이블명>`에 생성. �
 
 배포본은 Python 설치 없이 실행 가능. Unreal Engine과 프로젝트 빌드 환경은 별도로 준비.
 
+## 엑셀 형식
+
+첫 시트는 가이드로 제외. 데이터 시트명은 영문 사용. 1~2행에 설명과 필드명, 3행에 타입, 4행부터 데이터 입력. 기존 TableName 템플릿도 지원.
+
+첫 필드는 `ID / Int` 또는 `RowName / RowKey`. ID는 RowName으로도 사용하며 ID 필드는 유지. 새 형식의 빈 숫자·Bool은 0·false 처리. 필드명의 공백은 밑줄로 정리.
+
+`Enum`은 실제 행에서 사용한 값으로 생성. `None = 0` 고정, 빈칸·0은 None. 기존 번호를 유지하고 새 값만 뒤에 추가. `Enum:EScriptEvent`처럼 이름을 지정하면 테이블 간 공유.
+
+`Text`는 FText, `SoftObject`는 전체 에셋 경로를 담는 FSoftObjectPath. `String(Edit only)` 열은 JSON·C++에서 제외.
+
 ## 소스 실행
 
 Python 3.10+ / Tkinter. `Tools/run.bat` 또는 아래 명령으로 실행.

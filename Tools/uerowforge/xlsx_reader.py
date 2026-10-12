@@ -131,9 +131,10 @@ def read_xlsx(path: Path) -> list[Sheet]:
             date_styles = _date_styles(z)
             results: list[Sheet] = []
             total_cells = 0
-            for descriptor in workbook.findall("m:sheets/m:sheet", NS):
+            for index, descriptor in enumerate(workbook.findall("m:sheets/m:sheet", NS)):
                 name = descriptor.get("name", "")
-                if name.startswith("_"):
+                # The physical first sheet is always the workbook's guide.
+                if index == 0 or name.startswith("_"):
                     continue
                 target = targets.get(descriptor.get(RID, ""))
                 if not target:
